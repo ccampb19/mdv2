@@ -29,6 +29,7 @@ hold on
 for i = 1:5
 plot(OPTS.laser_names(OUTPUT.exits(i,:)>0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)>0),1),'x')
 end
+xlim([600,1000])
 
 ylabel('\mu_A (mm^-^1)')
 title('Calculated OPs')

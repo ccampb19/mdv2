@@ -69,6 +69,9 @@ if isfield(OPTS,'darkname')
     normline = (1:r_idx)'.*(size(DATAS.amps,2)./r_idx);
     for d_idx = 1:size(DATAS.amps,3)
         roidx = find((cutoffs(:,d_idx)-normline)<0,1,'first')-1;
+        if isempty(roidx)
+            roidx = size(cutoffs,1);
+        end
         foidx = cutoffs(roidx,d_idx);
         DATAS.cutoff(d_idx,1) = OPTS.rhorange(roidx);
         DATAS.cutoff(d_idx,2) = foidx;

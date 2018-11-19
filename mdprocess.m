@@ -17,8 +17,11 @@ assert(sum(ENDMAT(:,1) >= OPTS.rhorange(1))==endmatlength...
     & sum(ENDMAT(:,3) <= DATAS.freqs(end))==endmatlength,...
     'Endmat parameters out of range');
 
+% Correct endmat and rhos, if necessary
 if isfield(OPTS,'darkname')
+%     highcut = DATAS.cutoff(:,1) > OPTS.rhorange(end-2);
     ENDMAT(:,2:3) = DATAS.cutoff;
+%     ENDMAT(highcut,2) = OPTS.rhorange(end-2);
 end
 
 if OPTS.geomadjust
@@ -27,15 +30,15 @@ end
 
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
-    'FunctionTolerance',1e-10,'StepTolerance',1e-9,...
-    'MaxFunctionEvaluations',20000,'MaxIterations',20000);
+    'FunctionTolerance',1e-9,'StepTolerance',1e-9,...
+    'MaxFunctionEvaluations',25000,'MaxIterations',25000);
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
 for didx = 1:length(OPTS.usediodes)
     rhorange = newrhos(didx,:);
     fititer = 0;
-    for endidx = (ENDMAT(didx,2)-2:ENDMAT(didx,2)+2)-ENDMAT(didx,1)+1
+    for endidx = (ENDMAT(didx,2)-5:ENDMAT(didx,2))-ENDMAT(didx,1)+1
 
         % Round estimated endfreqs to existing frequencies
         endfreqidxs(didx) = find(DATAS.freqs<ENDMAT(didx,3),1,'last');
@@ -73,5 +76,5 @@ pwrlaw = @(b,x) b(1).*(x.^-b(2));
 for i = 1:length(OPTS.laser_names)
     y(i) = mean(OUTDATA.rmu(OUTDATA.exits(:,i)>0,i,2));
 end
-nrmrsd = @(b) norm(y - pwrlaw(b,x));
+nrmrsd = @(b) norm(y(~isnan(y)) - pwrlaw(b,x(~isnan(y))));
 OUTDATA.pwrfit = fminsearch(nrmrsd,[10000,1.4]);
