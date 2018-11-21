@@ -30,8 +30,8 @@ end
 
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
-    'FunctionTolerance',1e-9,'StepTolerance',1e-9,...
-    'MaxFunctionEvaluations',25000,'MaxIterations',25000);
+    'FunctionTolerance',1e-12,'StepTolerance',1e-6,...
+    'MaxFunctionEvaluations',50000,'MaxIterations',50000);
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
@@ -62,7 +62,7 @@ for didx = 1:length(OPTS.usediodes)
         
         fititer = fititer+1;
         [ops,~,~,OUTDATA.exits(fititer,didx)] = ...
-            lsqcurvefit(fitfunct,[0.01,1.5],[],YDATA,[],[],options);
+            lsqcurvefit(fitfunct,[0.022,1],[],YDATA,[],[],options);
         OUTDATA.rmu(fititer,didx,:) = real(ops);
     end
     OUTDATA.exp{didx} = YDATA;
@@ -76,5 +76,6 @@ pwrlaw = @(b,x) b(1).*(x.^-b(2));
 for i = 1:length(OPTS.laser_names)
     y(i) = mean(OUTDATA.rmu(OUTDATA.exits(:,i)>0,i,2));
 end
+options = optimset('MaxFunEvals',1000);
 nrmrsd = @(b) norm(y(~isnan(y)) - pwrlaw(b,x(~isnan(y))));
-OUTDATA.pwrfit = fminsearch(nrmrsd,[10000,1.4]);
+OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);

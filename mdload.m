@@ -27,7 +27,7 @@ for fnidx = 1:length(OPTS.rhorange)
 end
 % Error check
 for fi = 1:length(filenames)
-    findvar = length(strfind(filenames{fi},num2str(OPTS.rhorange(fi))));
+    findvar = length(strfind(filenames{fi},[num2str(OPTS.rhorange(fi)) '-']));
     if findvar == 0
         error('Could not replace rho in file prototype');
     elseif findvar ~=1
