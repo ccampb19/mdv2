@@ -42,6 +42,12 @@ end
 plot(600:1000,OUTPUT.pwrfit(1).*(600:1000).^-OUTPUT.pwrfit(2),'k--')
 xlabel('Wavelength (nm)')
 ylabel('\mu_S'' (mm^-^1)')
+
+if OPTS.bb == 1
+    figure;plot(OPTS.laser_names,fdmua,'kx')
+    hold on
+    plot(OUTPUT.wv,OUTPUT.bbmuas);
+end
     
 % for i = 1:6
 %     muas = OUTPUT.rmu(:,i,1);
