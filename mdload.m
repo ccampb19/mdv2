@@ -22,8 +22,7 @@ end
 filenames = cell(length(OPTS.rhorange),1);
 for fnidx = 1:length(OPTS.rhorange)
     filenames{fnidx} = [strrep(OPTS.filenameprototype,...
-        num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)))...
-        '-dcswitch.asc'];
+        num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)))];
 end
 % Error check
 for fi = 1:length(filenames)
@@ -39,9 +38,25 @@ end
 disp('Loading Data...');
 pirat = pi/180;
 for r_idx = 1:length(filenames)
-    temp=importdata([OPTS.basedir filenames{r_idx}],'\t',16);
+    temp=importdata([OPTS.basedir filenames{r_idx} '-dcswitch.asc'],'\t',16);
     DATAS.phases(r_idx,:,:) = temp.data(:,OPTS.usediodes.*2).*pirat;
     DATAS.amps(r_idx,:,:) = temp.data(:,OPTS.usediodes.*2+1);
+end
+
+% Load Broadband data?
+if OPTS.bb == 1
+    temp = importdata([OPTS.basedir OPTS.sphname],'\t',13);
+    sphint = str2num(temp.textdata{6}(24:end));
+    srefl = temp.data(:,2).*(1000/sphint); % counts/s
+    
+    for r_idx = 1:length(filenames)
+        temp=importdata([OPTS.basedir filenames{r_idx} '-tis.asc'],'\t',13);
+        inttime = str2num(temp.textdata{6}(24:end));
+        refl = temp.data(:,2).*(1000/inttime); % counts/s
+        
+        DATAS.R(:,r_idx) = refl./srefl;
+    end
+    DATAS.wv = temp.data(:,1);
 end
 
 if isfield(OPTS,'darkname')
