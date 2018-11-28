@@ -30,8 +30,8 @@ end
 
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
-    'FunctionTolerance',1e-10,'StepTolerance',1e-6,...
-    'MaxFunctionEvaluations',50000,'MaxIterations',50000);
+    'FunctionTolerance',1e-9,'StepTolerance',1e-6,...
+    'MaxFunctionEvaluations',30000,'MaxIterations',30000);
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
