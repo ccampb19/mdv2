@@ -58,9 +58,9 @@ if OPTS.bb == 1
         temp=importdata([OPTS.basedir filenames{r_idx} '-tis.asc'],'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
         refl = temp.data(:,2).*(1000/inttime); % counts/s
-%             DATAS.R(:,r_idx) = temp.data(:,2);
-%         DATAS.R(:,r_idx) = refl;
-        DATAS.R(:,r_idx) = refl./srefl;
+        
+        DATAS.R(:,r_idx) = refl;
+%         DATAS.R(:,r_idx) = refl./srefl;
     end
     DATAS.wv = temp.data(:,1);
 end
