@@ -31,7 +31,7 @@ end
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
     'FunctionTolerance',1e-9,'StepTolerance',1e-6,...
-    'MaxFunctionEvaluations',30000,'MaxIterations',30000);
+    'MaxFunctionEvaluations',50000,'MaxIterations',50000);
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
@@ -110,18 +110,20 @@ end
 
 if OPTS.bb == 1
     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-    newrhos = OPTS.rhorange(1:end)-1.6;
-    disp('Calculating Broadband Reflectance...')
-    rchop = DATAS.R(425:1862,1:end);
-    muchop = muscat(425:1862);
-    for i = 1:size(rchop,1)
-        blah = rchop(i,2:end)./rchop(i,1:end-1);
-        funfunct = @(mua,xdata) Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind)./...
-            Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind);
-%         sfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
-%             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
-        fitted(i) = lsqcurvefit(funfunct,.005,newrhos,blah,[],[],options);
-%         fitteds(i) = fminsearch(sfunct,.01);
+    muchop = muscat(425:1605);
+    for j = 1:10
+        newrhos = OPTS.rhorange(4:end-j+1)-1.3;
+        disp('Calculating Broadband Reflectance...')
+        rchop = DATAS.R(425:1605,4:end-j+1);
+        for i = 1:size(rchop,1)
+            blah = rchop(i,2:end)./rchop(i,1:end-1);
+            funfunct = @(mua,xdata) Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind)./...
+                Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind);
+    %         sfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
+    %             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
+            fitted(j,i) = lsqcurvefit(funfunct,.005,newrhos,blah,[],[],options);
+    %         fitteds(i) = fminsearch(sfunct,.01);
+        end
     end
     disp('Done!')
 end

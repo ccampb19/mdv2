@@ -28,7 +28,12 @@ end
 for fi = 1:length(filenames)
     findvar = length(strfind(filenames{fi},[num2str(OPTS.rhorange(fi)) '-']));
     if findvar == 0
-        error('Could not replace rho in file prototype');
+        findvar = length(strfind(filenames{fi},num2str(OPTS.rhorange(fi))));
+        if findvar == 0
+            error('Could not replace rho in file prototype');
+        elseif findvar ~=1
+            error('Rho can only appear once in filenames');
+        end
     elseif findvar ~=1
         error('Rho can only appear once in filenames');
     end
@@ -53,7 +58,7 @@ if OPTS.bb == 1
         temp=importdata([OPTS.basedir filenames{r_idx} '-tis.asc'],'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
         refl = temp.data(:,2).*(1000/inttime); % counts/s
-
+%             DATAS.R(:,r_idx) = temp.data(:,2);
 %         DATAS.R(:,r_idx) = refl;
         DATAS.R(:,r_idx) = refl./srefl;
     end
