@@ -31,7 +31,7 @@ end
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
     'FunctionTolerance',1e-9,'StepTolerance',1e-6,...
-    'MaxFunctionEvaluations',50000,'MaxIterations',50000);
+    'MaxFunctionEvaluations',40000,'MaxIterations',40000);
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
@@ -81,47 +81,49 @@ nrmrsd = @(b) norm(fdmusp(~isnan(fdmusp)) - pwrlaw(b,x(~isnan(fdmusp))));
 OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 
 % Do broadband fit?
+% if OPTS.bb == 1
+%     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
+%     for didx = 1:length(OPTS.laser_names)
+% %         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
+%         OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
+%     end
+%     rref = interp1(DATAS.wv,DATAS.R,OPTS.laser_names);
+%     rth = (Rtheory(OUTDATA.fdmua,fdmusp,OPTS.rhorange'-1.3,OPTS.nind))';
+%     for ridx = 1:size(rth,2)
+%         rscale(ridx) = rth(:,ridx)\rref(:,ridx);
+%     end
+%     % Trying a single scaling factor for now
+%     rscaled = DATAS.R./median(rscale);
+%     OUTDATA.bbmuas = zeros(size(rscaled));
+%     disp('Calculating Broadband Reflectance...')
+%     for ridx = 1:size(rscaled,2)
+%         for widx = 1:size(rscaled,1)
+% %                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
+% 
+%                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) DATAS.R(widx,ridx)./rscale(ridx) - ...
+%                 abs(Rtheory(mu,muscat(widx),OPTS.rhorange(ridx)-1.3,OPTS.nind)),.01));
+%         end
+%     end
+%     OUTDATA.wv = DATAS.wv;
+%     disp('Done!')        
+% end
+% 
 if OPTS.bb == 1
     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-    for didx = 1:length(OPTS.laser_names)
-%         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
-        OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
-    end
-    rref = interp1(DATAS.wv,DATAS.R,OPTS.laser_names);
-    rth = (Rtheory(OUTDATA.fdmua,fdmusp,OPTS.rhorange'-1.3,OPTS.nind))';
-    for ridx = 1:size(rth,2)
-        rscale(ridx) = rth(:,ridx)\rref(:,ridx);
-    end
-    % Trying a single scaling factor for now
-    rscaled = DATAS.R./median(rscale);
-    OUTDATA.bbmuas = zeros(size(rscaled));
+    newrhos = OPTS.rhorange(1:end)'-1.3;
     disp('Calculating Broadband Reflectance...')
-    for ridx = 1:size(rscaled,2)
-        for widx = 1:size(rscaled,1)
-%                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-
-                        OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) DATAS.R(widx,ridx)./rscale(ridx) - ...
-                abs(Rtheory(mu,muscat(widx),OPTS.rhorange(ridx)-1.3,OPTS.nind)),.01));
-        end
-    end
-    OUTDATA.wv = DATAS.wv;
-    disp('Done!')        
-end
-
-if OPTS.bb == 1
-    muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-    newrhos = OPTS.rhorange(1:end)-1.3;
-    disp('Calculating Broadband Reflectance...')
-    rchop = DATAS.R(425:1605,1:end-1);
+    rchop = DATAS.R(425:1605,1:end);
     muchop = muscat(425:1605);
     for i = 1:size(rchop,1)
-        blah = rchop(i,2:end)./rchop(i,1:end-1);
-        funfunct = @(mua,xdata) Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind)./...
-            Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind);
-%         sfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
-%             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
-        fitted(i) = lsqcurvefit(funfunct,.005,newrhos,blah,[],[],options);
+        for j = 1:8
+            blah = rchop(i,2:end-j+1)./rchop(i,1:end-j);
+            funfunct = @(mua,xdata) Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind)./...
+                Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind);
+    %         sfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
+    %             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
+            fitted(i,j) = lsqcurvefit(funfunct,.005,newrhos(1:end-j+1),blah',[],[],options);
 %         fitteds(i) = fminsearch(sfunct,.01);
+        end
     end
     disp('Done!')
 end
@@ -129,7 +131,7 @@ end
 if OPTS.bb == 1
     reff = 2.1037*OPTS.nind^6-19.8048*OPTS.nind^5+76.8786*OPTS.nind^4-...
         156.9634*OPTS.nind^3+176.4549*OPTS.nind^2 -101.6004*OPTS.nind+22.9286;
-    newrhos = OPTS.rhorange(1:end-3)'-1.4;
+    newrhos = OPTS.rhorange(1:end)'-1.3;
     chopidxs = 425:1605;
     options = optimset('MaxFunEvals',1e5,'MaxIter',1e5,'Display','Iter');
     % Initial guess for preft & slope provided by FDPM for now
@@ -137,9 +139,9 @@ if OPTS.bb == 1
     for i = 1:2
         tic
         % Find solution for increasing numbers of points in a loop
-        cchop = chopidxs(1:10^(3-i):end);
+        cchop = chopidxs(1:(10/i)^2:end);
         wchop = DATAS.wv(cchop)';
-        rchop = DATAS.R(cchop,1:14)';
+        rchop = DATAS.R(cchop,:)';
         rrat = rchop(2:end,:)./rchop(1:end-1,:);
         if i == 1
             x0 = [x0,.01.*ones(size(cchop))];
@@ -149,19 +151,22 @@ if OPTS.bb == 1
         [x,fval] = fminsearch(fitfun,x0,options);
         
         % Use solution as initial guess for next fitting iteration
-        x0 = [x(1:2), pchip(cchop,x(3:end),chopidxs(1:10^(2-i):end))];
+        x0 = [x(1:2), pchip(cchop,x(3:end),chopidxs(1:(10/(i+1))^2:end))];
         toc
     end
     wchop = DATAS.wv(chopidxs)';
     musps = x(1:2);
     muchop = pwrlaw(x(1:2),wchop);
-    rchop = DATAS.R(chopidxs,1:14)';
+    rchop = DATAS.R(chopidxs,:)';
     rrat = rchop(2:end,:)./rchop(1:end-1,:);
     for i = 1:size(rrat,2)
         blah = rrat(:,i);
         fcurve = @(mua,xdata) mrhobb(x0(1),x0(2),mua,xdata,wchop(i),OPTS.nind,reff);
         fitteds(i) = lsqcurvefit(fcurve,.005,newrhos,blah);
     end
+    OUTDATA.bbfit = fitteds;
+    OUTDATA.bbscat = muchop;
+    OUTDATA.bbwv = wchop;
 end
 
 
