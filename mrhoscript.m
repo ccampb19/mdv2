@@ -2,7 +2,7 @@
 clear
 % close all
 
-opt.basedir = 'E:\fdpm.data\foamtest\181116\';
+opt.basedir = 'D:\fdpm.data\foamtest\181203\';
 opt.nind = 1.332; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
 opt.laser_names=[660,688,781,806,828,849];  %only for plotting names
 opt.usediodes = 1:6;
@@ -12,7 +12,7 @@ opt.geomadjust = 1;
 
 % Fit Broadband? One sphere file only (full filename)
 opt.bb = 1;
-opt.sphname = 'sphere-sph.asc';
+opt.sphname = 'sphere-tis.asc';
 
 % Load all possible rhos, to be adjusted in endmat
 opt.rhorange = 12:28;
@@ -21,7 +21,7 @@ opt.rhorange = 12:28;
 % Code will replace the rho in the prototype with opt.rhorange.
 % Ex: 'ex-12-1-baseline' will load 'ex-12-1-baseline-dcswitch.asc' thru 
 %     'ex-30-1-baseline-dcswitch.asc'
-opt.filenameprototype = '12-1-5mg';
+opt.filenameprototype = '12-1-mdyesdyndark';
 opt.darkname = 'dark';
 opt.darkreps = 3;
 

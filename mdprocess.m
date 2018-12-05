@@ -30,7 +30,7 @@ end
 
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
-    'FunctionTolerance',1e-10,'StepTolerance',1e-6,...
+    'FunctionTolerance',1e-9,'StepTolerance',1e-6,...
     'MaxFunctionEvaluations',50000,'MaxIterations',50000);
 
 endfreqidxs = zeros(6,1);
@@ -131,7 +131,9 @@ if OPTS.bb == 1
         156.9634*OPTS.nind^3+176.4549*OPTS.nind^2 -101.6004*OPTS.nind+22.9286;
     newrhos = OPTS.rhorange(1:end-3)'-1.4;
     chopidxs = 425:1605;
-    options = optimset('MaxFunEvals',1e5,'MaxIter',1e5,'Display','Iter');
+    options = optimset('MaxFunEvals',1e4,'MaxIter',1e4,'Display','Iter');
+    loptions = optimset('MaxFunEvals',1000,'Display','off');
+
     % Initial guess for preft & slope provided by FDPM for now
     x0 = [OUTDATA.pwrfit(1),OUTDATA.pwrfit(2)];
     for i = 1:2
@@ -141,12 +143,14 @@ if OPTS.bb == 1
         wchop = DATAS.wv(cchop)';
         rchop = DATAS.R(cchop,1:14)';
         rrat = rchop(2:end,:)./rchop(1:end-1,:);
-        if i == 1
-            x0 = [x0,.01.*ones(size(cchop))];
-        end
-        fitfun = @(x) sum(sum(sqrt((mrhobb(x(1),x(2),x(3:end),newrhos,...
-            wchop,OPTS.nind,reff)-rrat).^2)));
+%         if i == 1
+%             x0 = [x0,.01.*ones(size(cchop))];
+%         end
+        fitfun = @(x) mrhobb(x(1),x(2),rrat,newrhos,wchop,OPTS.nind,reff,loptions,0);
+%         fitfun = @(x) sum(sum(sqrt((mrhobb(x(1),x(2),x(3:end),newrhos,...
+%             wchop,OPTS.nind,reff)-rrat).^2)));
         [x,fval] = fminsearch(fitfun,x0,options);
+        [anss,muass] = mrhobb(x(1),x(2),rrat,newrhos,wchop,OPTS.nind,reff,loptions,1);
         
         % Use solution as initial guess for next fitting iteration
         x0 = [x(1:2), pchip(cchop,x(3:end),chopidxs(1:10^(2-i):end))];
