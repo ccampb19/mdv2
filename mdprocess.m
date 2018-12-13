@@ -76,7 +76,7 @@ pwrlaw = @(b,x) b(1).*(x.^-b(2));
 for i = 1:length(OPTS.laser_names)
     fdmusp(i) = mean(OUTDATA.rmu(OUTDATA.exits(:,i)>0,i,2));
 end
-options = optimset('MaxFunEvals',1000);
+options = optimset('MaxFunEvals',1000,'Display','off');
 nrmrsd = @(b) norm(fdmusp(~isnan(fdmusp)) - pwrlaw(b,x(~isnan(fdmusp))));
 OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 
@@ -109,24 +109,31 @@ OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 % end
 % 
 if OPTS.bb == 1
+    chopidxs = 425:1605;
     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
     newrhos = OPTS.rhorange(1:end)-1.3;
     disp('Calculating Broadband Reflectance...')
-    rchop = DATAS.R(425:1605,1:end-1);
-    muchop = muscat(425:1605);
+    rchop = DATAS.R(chopidxs,1:end-1);
+    muchop = muscat(chopidxs);
+end
+if OPTS.bb == 1
+    % Fit for each wavelength
     for i = 1:size(rchop,1)
         for j = 1:5
         blah = rchop(i,2:end-j+1)./rchop(i,1:end-j);
-        funfunct = @(mua,xdata) Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind)./...
-            Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind);
+        funfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
+                abs(Rtheory(mua,muchop(i),xdata(1:end-1),nchop(i)));
+        sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
+            abs(p1seminfcompfit([mua,muchop(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
+            -blah).^2));
 %         funfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
 %             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
 
-        bbmuasp1(widx,ridx) = abs(fzero(@(mu) prescale(widx,ridx) - ...
-            abs(p1seminfcompfit([mu,musp(widx)],f,0,n,rho(ridx),0,0,1)),.01));
+%         bbmuasp1(widx,ridx) = abs(fzero(@(mu) prescale(widx,ridx) - ...
+%             abs(p1seminfcompfit([mu,musp(widx)],f,0,n,rho(ridx),0,0,1)),.01));
 
-        fitted(i,j) = lsqcurvefit(funfunct,.005,newrhos(1:end-j),blah,[],[],options);
-%         fitteds(i) = fminsearch(sfunct,.01);
+        fitted(i,j) = abs(lsqcurvefit(funfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
+        fitteds(i) = fminsearch(sfunct,.01);
         end
     end
     disp('Done!')
@@ -175,6 +182,7 @@ if OPTS.bb == 1
     for i = 1:6
         fdidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
     end
+    %% is this the right way to do this?
     for i = 1:size(rchop,1)
         perfecttheory = Rtheory(mean(OUTDATA.rmu(:,:,1)),mean(OUTDATA.rmu(:,:,2)),...
             newrhos(i),OPTS.nind)';
@@ -184,8 +192,11 @@ if OPTS.bb == 1
     for widx = 1:size(rrat,2)
 %         blah = rrat(:,i);
         for ridx = 1:length(blah)
+            sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
+                abs(p1seminfcompfit([mua,muchop(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
+                -blah).^2));
                     bbmuas(widx,ridx) = abs(fzero(@(mu) rrescale(widx,ridx) - ...
-            abs(Rtheory(mu,musp(widx),rho(ridx),n)),.01));
+            abs(Rtheory(mu,muchop(widx),rho(ridx),n)),.01));
 %             fcurve = @(mua,xdata) mrhobb(x0(1),x0(2),rrat,newrhos,wchop2,OPTS.nind,reff,loptions,1);
 %             fitteds(i) = lsqcurvefit(fcurve,.005,newrhos,blah);
         end
