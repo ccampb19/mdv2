@@ -3,7 +3,7 @@ clear
 % close all
 
 opt.basedir = 'D:\fdpm.data\foamtest\181203\';
-opt.nind = 1.332; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
+opt.nind = 1.33; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
 opt.laser_names=[660,688,781,806,828,849];  %only for plotting names
 opt.usediodes = 1:6;
 
