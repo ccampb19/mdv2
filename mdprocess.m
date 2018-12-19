@@ -111,9 +111,9 @@ OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 if OPTS.bb == 1
     chopidxs = 425:1605;
     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-    newrhos = OPTS.rhorange(1:end)-1.3;
+    newrhos = OPTS.rhorange(1:end)-1.4;
     disp('Calculating Broadband Reflectance...')
-    rchop = DATAS.R(chopidxs,1:end-1);
+    rchop = DATAS.R(chopidxs,1:end);
     muchop = muscat(chopidxs);
 end
 if OPTS.bb == 1
@@ -123,9 +123,11 @@ if OPTS.bb == 1
         blah = rchop(i,2:end-j+1)./rchop(i,1:end-j);
         funfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
                 abs(Rtheory(mua,muchop(i),xdata(1:end-1),nchop(i)));
-        sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
-            abs(p1seminfcompfit([mua,muchop(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
-            -blah).^2));
+%         sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
+%             abs(p1seminfcompfit([mua,muchop(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
+%             -blah).^2));
+        ssfunct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
+            abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
 %         funfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
 %             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
 
@@ -133,7 +135,8 @@ if OPTS.bb == 1
 %             abs(p1seminfcompfit([mu,musp(widx)],f,0,n,rho(ridx),0,0,1)),.01));
 
         fitted(i,j) = abs(lsqcurvefit(funfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
-        fitteds(i) = fminsearch(sfunct,.01);
+%         fitteds(i,j) = fminsearch(sfunct,.01);
+        fittedss(i,j) = abs(lsqcurvefit(ssfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
         end
     end
     disp('Done!')
