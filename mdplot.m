@@ -44,9 +44,10 @@ xlabel('Wavelength (nm)')
 ylabel('\mu_S'' (mm^-^1)')
 
 if OPTS.bb == 1
-    figure;plot(OPTS.laser_names,fdmua,'kx')
+    figure;plot(OPTS.laser_names(OUTPUT.exits(i,:)>0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)>0),1),'kx')
     hold on
-    plot(OUTPUT.wv,OUTPUT.bbmuas);
+    plot(OUTPUT.wv,OUTPUT.rfit,'--');
+    plot(OUTPUT.wv,OUTPUT.p1fit);
 end
     
 % for i = 1:6
