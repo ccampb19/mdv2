@@ -82,6 +82,9 @@ OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 
 % Do broadband fit?
 % if OPTS.bb == 1
+% %     Traditional broadband fit with scaling to FD MuA. I prefer to do
+% %     multirho broadband with FD MuSP only, to confirm results are
+% %     consistent.
 %     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
 %     for didx = 1:length(OPTS.laser_names)
 % %         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
@@ -107,7 +110,7 @@ OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 %     OUTDATA.wv = DATAS.wv;
 %     disp('Done!')        
 % end
-% 
+
 if OPTS.bb == 1
     chopidxs = 425:1605;
     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
@@ -121,28 +124,23 @@ if OPTS.bb == 1
     for i = 1:size(rchop,1)
         for j = 1:5
         blah = rchop(i,2:end-j+1)./rchop(i,1:end-j);
-        funfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
+        rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
                 abs(Rtheory(mua,muchop(i),xdata(1:end-1),nchop(i)));
-%         sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
-%             abs(p1seminfcompfit([mua,muchop(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
-%             -blah).^2));
-        ssfunct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
+
+        p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
             abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
-%         funfunct = @(mua) sum(abs(Rtheory(mua,muchop(i),newrhos(2:end),OPTS.nind)./...
-%             Rtheory(mua,muchop(i),newrhos(1:end-1),OPTS.nind)-blah));
 
-%         bbmuasp1(widx,ridx) = abs(fzero(@(mu) prescale(widx,ridx) - ...
-%             abs(p1seminfcompfit([mu,musp(widx)],f,0,n,rho(ridx),0,0,1)),.01));
-
-        fitted(i,j) = abs(lsqcurvefit(funfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
-%         fitteds(i,j) = fminsearch(sfunct,.01);
-        fittedss(i,j) = abs(lsqcurvefit(ssfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
+        rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
+        p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(1:end-j+1),blah,[],[],options));
         end
     end
     disp('Done!')
 end
     
 if OPTS.bb == 1
+    % This experimental _if_ statement is an attempt at self-calibrated broadband.
+    % Uniqueness of solutions has not been proven yet, so it may all be for
+    % naught.
     reff = 2.1037*OPTS.nind^6-19.8048*OPTS.nind^5+76.8786*OPTS.nind^4-...
         156.9634*OPTS.nind^3+176.4549*OPTS.nind^2 -101.6004*OPTS.nind+22.9286;
     newrhos = OPTS.rhorange(1:end)'-1.3;
