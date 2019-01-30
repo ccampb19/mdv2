@@ -11,10 +11,10 @@ assert((size(ENDMAT,1) == size(DATAS.complex,3)) & (size(ENDMAT,2) == 3),...
     'Endmat must be size (num diodes) x 3');
 
 endmatlength = size(ENDMAT,1);
-assert(sum(ENDMAT(:,1) >= OPTS.rhorange(1))==endmatlength...
-    & sum(ENDMAT(:,2) < OPTS.rhorange(end)-1)==endmatlength...
-    & sum(ENDMAT(:,2) > ENDMAT(:,1)+2)==endmatlength...
-    & sum(ENDMAT(:,3) <= DATAS.freqs(end))==endmatlength,...
+assert(sum(ENDMAT(:,1) >= OPTS.rhorange(1))== endmatlength...
+    & sum(ENDMAT(:,2) <= OPTS.rhorange(end))== endmatlength...
+    & sum(ENDMAT(:,2) > ENDMAT(:,1)+2)== endmatlength...
+    & sum(ENDMAT(:,3) <= DATAS.freqs(end))== endmatlength,...
     'Endmat parameters out of range');
 
 % Correct endmat and rhos, if necessary
@@ -26,32 +26,45 @@ end
 
 if OPTS.geomadjust
     newrhos = geomadjust(OPTS.usediodes,OPTS.rhorange);
+else
+    newrhos = repmat(OPTS.rhorange,length(OPTS.usediodes),1);
 end
 
 % Do the fit one diode at a time.
 options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
-    'FunctionTolerance',1e-9,'StepTolerance',1e-6,...
-    'MaxFunctionEvaluations',50000,'MaxIterations',50000);
+    'FunctionTolerance',1e-12,'StepTolerance',1e-7,...
+    'MaxFunctionEvaluations',60000,'MaxIterations',60000,...
+    'Display','off');
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
+numtries = 3;
+OUTDATA.exits = -1.*ones(numtries,length(OPTS.usediodes));
+disp('lsqcurvefit Exit Flags:')
+
 for didx = 1:length(OPTS.usediodes)
     trhorange = newrhos(didx,:);
     fititer = 0;
-    for endidx = (ENDMAT(didx,2)-4:ENDMAT(didx,2))-ENDMAT(didx,1)+1
+    
+    % Round estimated endfreqs to existing frequencies
+    endfreqidxs(didx) = find(DATAS.freqs>ENDMAT(didx,3),1,'first');
+    startrhoidxs(didx) = find(OPTS.rhorange == ENDMAT(didx,1));
+    
+%     for endidx = (ENDMAT(didx,2)-4:ENDMAT(didx,2))-ENDMAT(didx,1)+1
+    for jj = 1:numtries
+        endidx = find(OPTS.rhorange==ENDMAT(didx,2))-numtries+jj;
 
-        % Round estimated endfreqs to existing frequencies
-        endfreqidxs(didx) = find(DATAS.freqs<ENDMAT(didx,3),1,'last');
-        startrhoidxs(didx) = find(OPTS.rhorange == ENDMAT(didx,1));
         % For reshape operation to work as I would like, must do (elementwise)
         % transpose here.
         diodedata = DATAS.complex(:,1:endfreqidxs(didx),didx).';
         YDATA = [];
-        for startidx = (startrhoidxs(didx)+1):(endidx-1)
+        for startidx = 1+startrhoidxs(didx):endidx
     %         for endidx = startidx+1:(ENDMAT(didx,2)-ENDMAT(didx,1)+1)
-            tempdata = diodedata(1:endfreqidxs(didx),startidx:endidx)./...
-                diodedata(1:endfreqidxs(didx),startidx-1);
+%             fprintf('%d%s%d\n',startidx,'...',endidx)
+            tempdata = diodedata(:,startidx:endidx)./...
+                diodedata(:,startidx-1);
             YDATA = [YDATA, reshape(tempdata,1,[])];
+%             fprintf('%d\n',length(YDATA))
         end
 
         % Fit here
@@ -62,20 +75,31 @@ for didx = 1:length(OPTS.usediodes)
         
         fititer = fititer+1;
         [ops,~,~,OUTDATA.exits(fititer,didx)] = ...
-            lsqcurvefit(fitfunct,[0.022,1],[],YDATA,[],[],options);
+            lsqcurvefit(fitfunct,[0.00522,1],[],YDATA,[],[],options);
         OUTDATA.rmu(fititer,didx,:) = real(ops);
+        disp('lsqcurvefit Exit Flags:')
+        OUTDATA.exits
+        
+%         figure;plot(YDATA,'.')
+%         hold on;plot(sfunct(squeeze(OUTDATA.rmu(endidx-5,didx,1)),squeeze(OUTDATA.rmu(endidx-5,didx,2))),'x')
     end
     OUTDATA.exp{didx} = YDATA;
-    optemp = median(squeeze(OUTDATA.rmu(:,didx,:)),1);
-    OUTDATA.theory{didx} = sfunct(optemp(1),optemp(2));
+    if sum(OUTDATA.exits(:,didx) > 1) == 0
+        opfd(:,didx) = median(squeeze(OUTDATA.rmu(:,didx,:)));
+    elseif sum(OUTDATA.exits(:,didx)>1) == 1
+        opfd(:,didx) = OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:);
+    else
+        opfd(:,didx) = mean(squeeze(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:)),1);
+    end
+    OUTDATA.theory{didx} = sfunct(opfd(1,didx),opfd(2,didx));
 end
+OUTDATA.endfidxs = endfreqidxs;
 
 % Fit scattering parameters
 x = OPTS.laser_names(OPTS.usediodes);
 pwrlaw = @(b,x) b(1).*(x.^-b(2));
-for i = 1:length(OPTS.laser_names)
-    fdmusp(i) = mean(OUTDATA.rmu(OUTDATA.exits(:,i)>0,i,2));
-end
+fdmusp = opfd(2,:);
+
 options = optimset('MaxFunEvals',1000,'Display','off');
 nrmrsd = @(b) norm(fdmusp(~isnan(fdmusp)) - pwrlaw(b,x(~isnan(fdmusp))));
 OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
@@ -114,7 +138,7 @@ OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 if OPTS.bb == 1
     chopidxs = 425:1605;
     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-    newrhos = OPTS.rhorange(1:end)-1.4;
+    newrhos = OPTS.rhorange(1:end)-1;
     disp('Calculating Broadband Reflectance...')
     rchop = DATAS.R(chopidxs,1:end);
     muchop = muscat(chopidxs);

@@ -21,8 +21,8 @@ end
 % Generate filenames
 filenames = cell(length(OPTS.rhorange),1);
 for fnidx = 1:length(OPTS.rhorange)
-    filenames{fnidx} = [strrep(OPTS.filenameprototype,...
-        num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)))];
+    filenames{fnidx} = strrep(OPTS.filenameprototype,...
+        num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)));
 end
 % Error check
 for fi = 1:length(filenames)
@@ -98,6 +98,7 @@ if isfield(OPTS,'darkname')
         DATAS.cutoff(d_idx,2) = foidx;
     end
 end
+DATAS.cutoffidxs = cutoffs;
 
 DATAS.complex = DATAS.amps.*cos(DATAS.phases)...
         +1i.*DATAS.amps.*sin(DATAS.phases);
