@@ -54,7 +54,7 @@
 %				MATLAB take the real and imaginary parts.				
 
 
-function y = p1seminf(p,f,fx,nind,rho1,rho2, wt, reim_flag,boundary_opt, reff)
+function y = p1seminfcompfit(p,f,fx,nind,rho1,rho2, wt, reim_flag,boundary_opt, reff)
 
 %*************************************************************************
 %PRELIMINARY MATTERS

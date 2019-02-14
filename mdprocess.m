@@ -31,14 +31,16 @@ else
 end
 
 % Do the fit one diode at a time.
-options = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
-    'FunctionTolerance',1e-12,'StepTolerance',1e-7,...
+lsqoptions = optimoptions('lsqcurvefit','Algorithm','Levenberg-Marquardt',...
+    'FunctionTolerance',5e-12,'StepTolerance',1e-7,...
+    'MaxFunctionEvaluations',60000,'MaxIterations',60000);
+psoptions = optimoptions('patternsearch','FunctionTolerance',1e-12,...
     'MaxFunctionEvaluations',60000,'MaxIterations',60000,...
-    'Display','off');
+    'MeshTolerance',10*eps);
 
 endfreqidxs = zeros(6,1);
 startrhoidxs = endfreqidxs;
-numtries = 3;
+numtries = 5;
 OUTDATA.exits = -1.*ones(numtries,length(OPTS.usediodes));
 disp('lsqcurvefit Exit Flags:')
 
@@ -71,12 +73,22 @@ for didx = 1:length(OPTS.usediodes)
         sfunct=@(mua,mus) mdprepfun(...
             mua,mus,OPTS.nind,trhorange,DATAS.freqs(1:endfreqidxs(didx)),...
             startrhoidxs(didx),endidx);
-        fitfunct=@(p,x)sfunct(p(1),p(2));
+        lsqfitfunct=@(p,x)sfunct(p(1),p(2));
+        psfitfunct=@(p,x) sum(abs(sfunct(p(1),p(2))-YDATA));
+
         
         fititer = fititer+1;
-        [ops,~,~,OUTDATA.exits(fititer,didx)] = ...
-            lsqcurvefit(fitfunct,[0.00522,1],[],YDATA,[],[],options);
+        vals = [.02*rand(1), 2*rand(1)];
+        tic
+        [ops,fval(fititer,didx),OUTDATA.exits(fititer,didx),output] = ...
+            patternsearch(psfitfunct,vals,[],[],[],[],[0,0],[.5,5],[],psoptions);
+        toc
+%         tic
+%         [ops2,~,~,OUTDATA.exits2(fititer,didx)] = ...
+%             lsqcurvefit(lsqfitfunct,vals,[],YDATA,[],[],lsqoptions);
+%         toc
         OUTDATA.rmu(fititer,didx,:) = real(ops);
+        format long, ops
         disp('lsqcurvefit Exit Flags:')
         OUTDATA.exits
         
@@ -89,7 +101,7 @@ for didx = 1:length(OPTS.usediodes)
     elseif sum(OUTDATA.exits(:,didx)>1) == 1
         opfd(:,didx) = OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:);
     else
-        opfd(:,didx) = mean(squeeze(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:)),1);
+        opfd(:,didx) = median(squeeze(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:)),1);
     end
     OUTDATA.theory{didx} = sfunct(opfd(1,didx),opfd(2,didx));
 end
@@ -105,35 +117,41 @@ nrmrsd = @(b) norm(fdmusp(~isnan(fdmusp)) - pwrlaw(b,x(~isnan(fdmusp))));
 OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
 
 % Do broadband fit?
-% if OPTS.bb == 1
-% %     Traditional broadband fit with scaling to FD MuA. I prefer to do
-% %     multirho broadband with FD MuSP only, to confirm results are
-% %     consistent.
-%     muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-%     for didx = 1:length(OPTS.laser_names)
-% %         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
-%         OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
-%     end
-%     rref = interp1(DATAS.wv,DATAS.R,OPTS.laser_names);
-%     rth = (Rtheory(OUTDATA.fdmua,fdmusp,OPTS.rhorange'-1.3,OPTS.nind))';
-%     for ridx = 1:size(rth,2)
-%         rscale(ridx) = rth(:,ridx)\rref(:,ridx);
-%     end
-%     % Trying a single scaling factor for now
-%     rscaled = DATAS.R./median(rscale);
-%     OUTDATA.bbmuas = zeros(size(rscaled));
-%     disp('Calculating Broadband Reflectance...')
-%     for ridx = 1:size(rscaled,2)
-%         for widx = 1:size(rscaled,1)
-% %                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-% 
-%                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) DATAS.R(widx,ridx)./rscale(ridx) - ...
-%                 abs(Rtheory(mu,muscat(widx),OPTS.rhorange(ridx)-1.3,OPTS.nind)),.01));
-%         end
-%     end
-%     OUTDATA.wv = DATAS.wv;
-%     disp('Done!')        
-% end
+if OPTS.bb == 1
+%     Traditional broadband fit with scaling to FD MuA. I prefer to do
+%     multirho broadband with FD MuSP only, to confirm results are
+%     consistent.
+    chopidxs = 425:1605;
+    rchop = DATAS.R(chopidxs,1:end);
+    wvchop = DATAS.wv(chopidxs);
+    
+    muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
+    muchop = muscat(chopidxs);
+
+    for didx = 1:length(OPTS.laser_names)
+%         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
+        OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
+    end
+    rref = interp1(wvchop,rchop,OPTS.laser_names);
+    rth = (Rtheory(OUTDATA.fdmua,fdmusp,OPTS.rhorange'-1,OPTS.nind))';
+    for ridx = 1:size(rth,2)
+        rscale(ridx) = rth(:,ridx)\rref(:,ridx);
+    end
+    % Trying a single scaling factor for now
+    rscaled = rchop./median(rscale);
+    OUTDATA.rfit = zeros(size(rscaled));
+    disp('Calculating Broadband Reflectance...')
+    for ridx = 1:size(rscaled,2)
+        for widx = 1:size(rscaled,1)
+%                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
+
+                        OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rchop(widx,ridx)./rscale(ridx) - ...
+                abs(Rtheory(mu,muchop(widx),OPTS.rhorange(ridx)-1,OPTS.nind)),.01));
+        end
+    end
+    OUTDATA.wv = wvchop;
+    disp('Done!')        
+end
 
 if OPTS.bb == 1
     chopidxs = 425:1605;
@@ -154,11 +172,11 @@ if OPTS.bb == 1
         p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
             abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
 
-        rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
+%         rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
         p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(1:end-j+1),blah,[],[],options));
         end
     end
-    OUTDATA.rfit = rfitteds;
+%     OUTDATA.rfit = rfitteds;
     OUTDATA.p1fit = p1fitteds;
     OUTDATA.wv = DATAS.wv(chopidxs);
     disp('Done!')

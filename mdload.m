@@ -66,10 +66,16 @@ if OPTS.bb == 1
 end
 
 if isfield(OPTS,'darkname')
-    for i = 1:OPTS.darkreps
-        temp = importdata([OPTS.basedir OPTS.darkname '-' sprintf('%04d',i)...
-            '-dcswitch.asc'],'\t',16);
-        darkamps(:,:,i) = temp.data(:,3:2:end);
+    if OPTS.darkreps == 0
+        temp = importdata([OPTS.basedir OPTS.darkname '-dcswitch.asc'],...
+            '\t',16);
+        darkamps = temp.data(:,3:2:end);
+    else
+        for i = 1:OPTS.darkreps
+            temp = importdata([OPTS.basedir OPTS.darkname '-' sprintf('%04d',i)...
+                '-dcswitch.asc'],'\t',16);
+            darkamps(:,:,i) = temp.data(:,3:2:end);
+        end
     end
     
     dfloor = 10.^((3+20.*log10(max(darkamps,[],3)))/20)';

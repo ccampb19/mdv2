@@ -5,6 +5,7 @@ function phantom = mdplot(OPTS,OUTPUT)
 %   EXITS contains exitflags indicating degree of fitting success
 
 diodenum = length(OPTS.usediodes);
+colors = varycolor_rainbow(length(OPTS.rhorange));
 
 figure
 for i = 1:diodenum
@@ -13,15 +14,18 @@ for i = 1:diodenum
     
     subplot(diodenum,2,2*i-1)
     hold on
-    plot(abs(tempe(1:10,:)'),'.')
-    plot(abs(tempt(1:10,:)'))
+    ha = plot(abs(tempe(1:10,:))','.');
+    hb = plot(abs(tempt(1:10,:))');
+    set(hb,{'Color'},num2cell(colors(1:10,:),2));
     ylabel('Amp.')
     title(num2str(OPTS.laser_names(OPTS.usediodes(i))))
     
     subplot(diodenum,2,2*i)
     hold on
-    plot(angle(tempe(1:10,:)'),'.')
-    plot(angle(tempt(1:10,:)'))
+    ha = plot(angle(tempe(1:10,:)'),'.','Color',colors(i,:));
+    set(ha,{'Color'},num2cell(colors(1:10,:),2));
+    hb = plot(angle(tempt(1:10,:)'),'Color',colors(i,:));
+    set(hb,{'Color'},num2cell(colors(1:10,:),2));
     ylabel('Phase')
     title(num2str(OPTS.laser_names(i)))
     
@@ -65,7 +69,6 @@ if OPTS.bb == 1
     ylabel('\mu_A (mm^-^1)')
 end
 
-colors = varycolor_rainbow(length(OPTS.rhorange));
 figure
 for i = 1:length(OPTS.usediodes)
     tempexpmat = reshape(OUTPUT.exp{i},OUTPUT.endfidxs(i),[]);
