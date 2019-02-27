@@ -32,12 +32,12 @@ for i = 1:diodenum
 end
 suptitle('Phase/Amp Ratios & Fits')
 
-figure
+figure(1000)
 subplot(2,1,1)
 hold on
 for i = 1:size(OUTPUT.rmu,1)
-plot(OPTS.laser_names(OUTPUT.exits(i,:)>0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)>0),1),'x')
-plot(OPTS.laser_names(OUTPUT.exits(i,:)==0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)==0),1),'o')
+    plot(OPTS.laser_names(OUTPUT.exits(i,:)>0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)>0),1),'x')
+    plot(OPTS.laser_names(OUTPUT.exits(i,:)==0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)==0),1),'o')
 end
 xlim([600,1000])
 
@@ -55,7 +55,9 @@ xlabel('Wavelength (nm)')
 ylabel('\mu_S'' (mm^-^1)')
 
 if OPTS.bb == 1
-    figure
+%     figure
+    figure(1000)
+    subplot(2,1,1)
     hold on
     for i = 1:size(OUTPUT.rmu,1)
         plot(OPTS.laser_names(OUTPUT.exits(i,:)>0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)>0),1),'kx')
