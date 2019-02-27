@@ -62,7 +62,7 @@ if OPTS.bb == 1
         plot(OPTS.laser_names(OUTPUT.exits(i,:)==0),OUTPUT.rmu(i,(OUTPUT.exits(i,:)==0),1),'ro')
     end
     
-    plot(OUTPUT.wv,OUTPUT.rfit,'--');
+    plot(OUTPUT.wv,OUTPUT.rfit,':');
     plot(OUTPUT.wv,OUTPUT.p1fit);
     
     xlabel('\lambda (nm)')

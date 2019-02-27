@@ -1,21 +1,23 @@
 % mrhoscript
-clear
+% clear
 % close all
 
 opt.basedir = 'D:\fdpm.data\troubleshooting\190214\';
 opt.nind = 1.4; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
 opt.laser_names=[660,688,781,806,828,849];  %only for plotting names
-opt.usediodes = 1:6;
+opt.usediodes = [1:6];
 
 % Adjust rho for LBS fiber positioning in ferrules?
-opt.geomadjust = 0;
+opt.geomadjust = 1;
 
 % Fit Broadband? One sphere file only (full filename)
 opt.bb = 1;
 opt.sphname = 'sphere-tis.asc';
+opt.smooth = 0;
+opt.threshold = 6000; % Counts where uncalibrated spectrometer loses linearity
 
 % Load all possible rhos, to be adjusted in endmat
-startrho = 14;
+startrho = 15;
 endrho = 28;
 opt.rhosteps = 1;
 opt.rhorange = startrho:opt.rhosteps:endrho;
@@ -25,7 +27,7 @@ endfreq = 560;
 % Code will replace the rho in the prototype with opt.rhorange.
 % Ex: 'ex-12-1-baseline' will load 'ex-12-1-baseline-dcswitch.asc' thru 
 %     'ex-30-1-baseline-dcswitch.asc'
-opt.filenameprototype = ['ndabsd-m-10560-1000-' num2str(startrho)];
+opt.filenameprototype = [num2str(startrho) '-1-ndabsd-scan-1000' ];
 
 % fdpm dark msmts
 opt.darkname = 'dark-10560-1000';
