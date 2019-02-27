@@ -43,6 +43,9 @@ endmat = repmat([startrho,endrho,endfreq],6,1);
 
 data = mdload(opt);
 tic
-outdata = mdprocess(opt,endmat,data);
+outdata = mdprocess_fd(opt,endmat,data);
+if opt.bb==1
+    outdata = mdprocess_bb(opt,data,outdata);
+end
 toc
 phantom = mdplot(opt,outdata);
