@@ -24,7 +24,8 @@ for fnidx = 1:length(OPTS.rhorange)
     filenames{fnidx} = strrep(OPTS.filenameprototype,...
         num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)));
 end
-% Error check
+
+%% Error check
 for fi = 1:length(filenames)
     findvar = length(strfind(filenames{fi},[num2str(OPTS.rhorange(fi)) '-']));
     if findvar == 0
@@ -39,7 +40,7 @@ for fi = 1:length(filenames)
     end
 end
     
-% Load data
+%% Load data
 disp('Loading Data...');
 pirat = pi/180;
 for r_idx = 1:length(filenames)
@@ -47,24 +48,41 @@ for r_idx = 1:length(filenames)
     DATAS.phases(r_idx,:,:) = temp.data(:,OPTS.usediodes.*2).*pirat;
     DATAS.amps(r_idx,:,:) = temp.data(:,OPTS.usediodes.*2+1);
 end
+DATAS.complex = DATAS.amps.*cos(DATAS.phases)...
+        +1i.*DATAS.amps.*sin(DATAS.phases);
+DATAS.freqs = temp.data(:,1);
 
-% Load Broadband data?
+%% Load Broadband data?
 if OPTS.bb == 1
+    
     temp = importdata([OPTS.basedir OPTS.sphname],'\t',13);
     sphint = str2num(temp.textdata{6}(24:end));
     srefl = temp.data(:,2).*(1000/sphint); % counts/s
-    
+    if OPTS.smooth == 1
+        srefl = spectrumSmoother(srefl,1,3);
+        srefl = spectrumSmoother(srefl,3);
+    end
     for r_idx = 1:length(filenames)
         temp=importdata([OPTS.basedir filenames{r_idx} '-tis.asc'],'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
-        refl = temp.data(:,2).*(1000/inttime); % counts/s
+
+%         refl(:,r_idx) = temp.data(:,2);
+        refl(:,r_idx) = temp.data(:,2).*(1000/inttime); % counts/s
         
-        DATAS.R(:,r_idx) = refl;
-%         DATAS.R(:,r_idx) = refl./srefl;
     end
+    if OPTS.smooth == 1
+        for r_idx = 1:size(refl,2)
+            refl(:,r_idx) = spectrumSmoother(refl(:,r_idx),1,3);
+            refl(:,r_idx) = spectrumSmoother(refl(:,r_idx),3);
+        end
+    end
+%     DATAS.R = refl;
+    DATAS.R = refl./srefl;
     DATAS.wv = temp.data(:,1);
 end
+% DATAS.R = DATAS.R(425:1605,:);
 
+%% Filter dark FD data?
 if isfield(OPTS,'darkname')
     if OPTS.darkreps == 0
         temp = importdata([OPTS.basedir OPTS.darkname '-dcswitch.asc'],...
@@ -106,12 +124,13 @@ if isfield(OPTS,'darkname')
 end
 DATAS.cutoffidxs = cutoffs;
 
-DATAS.complex = DATAS.amps.*cos(DATAS.phases)...
-        +1i.*DATAS.amps.*sin(DATAS.phases);
-DATAS.freqs = temp.data(:,1);
+%% Filter dark broadband data?
+% If dark-corrected data below 2000 cts, don't trust it
 
-save('mdopt.mat','OPTS')
-save('mddata.mat','DATAS')
+
+%% Save data, though it's fast enough now that maybe I'll delete this optioh
+% save('mdopt.mat','OPTS')
+% save('mddata.mat','DATAS')
 disp('Done!')
 
 
