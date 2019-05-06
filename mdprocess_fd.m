@@ -89,7 +89,7 @@ for didx = 1:length(OPTS.usediodes)
 %         toc
         OUTDATA.rmu(fititer,didx,:) = real(ops);
         format long, ops
-        disp('lsqcurvefit Exit Flags:')
+        disp('PatternSearch Exit Flags:')
         OUTDATA.exits
         
 %         figure;plot(YDATA,'.')
@@ -98,7 +98,7 @@ for didx = 1:length(OPTS.usediodes)
     OUTDATA.exp{didx} = YDATA;
     if sum(OUTDATA.exits(:,didx) > 1) == 0
         OUTDATA.opfd(:,didx) = median(squeeze(OUTDATA.rmu(:,didx,:)));
-    elseif sum(OUTDATA.exits(:,didx)>1) == 1
+    elseif sum(OUTDATA.exits(:,didx)> 1) == 1
         OUTDATA.opfd(:,didx) = OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:);
     else
         OUTDATA.opfd(:,didx) = median(squeeze(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:)),1);
@@ -109,9 +109,11 @@ OUTDATA.endfidxs = endfreqidxs;
 
 % Fit scattering parameters
 x = OPTS.laser_names(OPTS.usediodes);
+% pwrlaw = @(b,x) -b(1).*log(x)+b(2)+b(3).*x.^-4;
 pwrlaw = @(b,x) b(1).*(x.^-b(2));
 fdmusp = OUTDATA.opfd(2,:);
 
-options = optimset('MaxFunEvals',1000,'Display','off');
+options = optimset('MaxFunEvals',10000,'Display','off');
 nrmrsd = @(b) norm(fdmusp(~isnan(fdmusp)) - pwrlaw(b,x(~isnan(fdmusp))));
-OUTDATA.pwrfit = fminsearch(nrmrsd,[8000,1.3],options);
+OUTDATA.pwrfit = fminsearch(nrmrsd,[4000,1.3],options);
+% OUTDATA.pwrfit = fminsearch(nrmrsd,[1,10,1000],options);

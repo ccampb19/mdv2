@@ -54,20 +54,26 @@ DATAS.freqs = temp.data(:,1);
 
 %% Load Broadband data?
 if OPTS.bb == 1
-    
+    bbfilenames = cell(length(OPTS.bbrhorange),1);
+    for fnidx = 1:length(OPTS.bbrhorange)
+        bbfilenames{fnidx} = strrep(OPTS.filenameprototype,...
+            num2str(OPTS.rhorange(1)),num2str(OPTS.bbrhorange(fnidx)));
+    end
+
+    chopidxs = 425:1605;
     temp = importdata([OPTS.basedir OPTS.sphname],'\t',13);
     sphint = str2num(temp.textdata{6}(24:end));
-    srefl = temp.data(:,2).*(1000/sphint); % counts/s
+    srefl = temp.data(chopidxs,2).*(1000/sphint); % counts/s
     if OPTS.smooth == 1
         srefl = spectrumSmoother(srefl,1,3);
         srefl = spectrumSmoother(srefl,3);
     end
-    for r_idx = 1:length(filenames)
-        temp=importdata([OPTS.basedir filenames{r_idx} '-tis.asc'],'\t',13);
+    for r_idx = 1:length(bbfilenames)
+        temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis.asc'],'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
 
 %         refl(:,r_idx) = temp.data(:,2);
-        refl(:,r_idx) = temp.data(:,2).*(1000/inttime); % counts/s
+        refl(:,r_idx) = temp.data(chopidxs,2).*(1000/inttime); % counts/s
         
     end
     if OPTS.smooth == 1
@@ -78,9 +84,13 @@ if OPTS.bb == 1
     end
 %     DATAS.R = refl;
     DATAS.R = refl./srefl;
-    DATAS.wv = temp.data(:,1);
+    DATAS.wv = temp.data(chopidxs,1);
+    
+    % Filter broadband data
+    % If spec data (dark-corrected or otherwise) below 8000 cts, don't trust it
+    [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(refl < 8000);
+    DATAS.bbdarkidxs = find(refl < 8000);
 end
-% DATAS.R = DATAS.R(425:1605,:);
 
 %% Filter dark FD data?
 if isfield(OPTS,'darkname')
@@ -124,15 +134,6 @@ if isfield(OPTS,'darkname')
 end
 DATAS.cutoffidxs = cutoffs;
 
-%% Filter dark broadband data?
-% If dark-corrected data below 2000 cts, don't trust it
-
-
-%% Save data, though it's fast enough now that maybe I'll delete this optioh
-% save('mdopt.mat','OPTS')
-% save('mddata.mat','DATAS')
 disp('Done!')
-
-
 end
 

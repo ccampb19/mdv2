@@ -1,41 +1,43 @@
 function OUTDATA = mdprocess_bb(OPTS,DATAS,OUTDATA)
 
+% pwrlaw = @(b,x) -b(1).*log(x)+b(2)+b(3).*x.^-4;
 pwrlaw = @(b,x) b(1).*(x.^-b(2));
-chopidxs = 425:1605;
 muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-newrhos = OPTS.rhorange(1:end)-1;
-rchop = DATAS.R(chopidxs,1:end);
-muchop = muscat(chopidxs);
-wvchop = DATAS.wv(chopidxs);
+% Adjust rho for fiber geometry (1mm shorter than FD)
+newrhos = OPTS.bbrhorange-1;
+rchop = DATAS.R;
+muchop = muscat;
+wvchop = DATAS.wv;
 
 % Traditional broadband fit with scaling to FD MuA. I prefer to do
 % multirho broadband with FD MuS' only, to confirm results are
 % consistent.
-disp('Calculating Broadband Reflectance...')
-for didx = 1:length(OPTS.laser_names)
-%         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
-    OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
-end
-rref = interp1(wvchop,rchop,OPTS.laser_names);
-for i = 1:length(OUTDATA.fdmua)
-    rth(i,:) = (p1seminfcompfit([OUTDATA.fdmua(i),OUTDATA.opfd(2,i)],0,0,OPTS.nind,newrhos',0,0,1));
-end
-for ridx = 1:size(rth,2)
-    rscale(ridx) = rth(:,ridx)\rref(:,ridx);
-end
-% Scale each spectrum to theory
-rscaled = rchop./rscale;
-OUTDATA.rfit = zeros(size(rscaled));
-for ridx = 1:size(rscaled,2)
-    for widx = 1:size(rscaled,1)
-%                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-%             OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rchop(widx,ridx)./rscale(ridx) - ...
-%                 abs(Rtheory(mu,muchop(widx),newrhos(ridx),OPTS.nind)),.01));
-
-        OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-            abs(p1seminfcompfit([mu,muchop(widx)],0,0,OPTS.nind,newrhos(ridx),0,0,1)),.01));
-    end
-end
+% disp('Calculating Broadband Reflectance...')
+% for didx = 1:length(OPTS.laser_names)
+% %         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
+%     OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
+% end
+% rref = interp1(wvchop,rchop,OPTS.laser_names);
+% for i = 1:length(OUTDATA.fdmua)
+%     rth(i,:) = (p1seminfcompfit([OUTDATA.fdmua(i),OUTDATA.opfd(2,i)],0,0,OPTS.nind,newrhos',0,0,1));
+% end
+% for ridx = 1:size(rth,2)
+%     rscale(ridx) = rth(:,ridx)\rref(:,ridx);
+% end
+% % Scale each spectrum to theory
+% rscaled = rchop./rscale;
+% OUTDATA.rfit = zeros(size(rscaled));
+% for ridx = 1:size(rscaled,2)
+%     for widx = 1:size(rscaled,1)
+% %                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
+% %             OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rchop(widx,ridx)./rscale(ridx) - ...
+% %                 abs(Rtheory(mu,muchop(widx),newrhos(ridx),OPTS.nind)),.01));
+% 
+%         OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
+%             abs(p1seminfcompfit([mu,muchop(widx)],0,0,OPTS.nind,newrhos(ridx),0,0,1)),.01));
+%     end
+% end
+% OUTDATA.rfit(DATAS.bbdarkidxs) = 0;
 OUTDATA.wv = wvchop;
 disp('Done!')
 
@@ -44,23 +46,34 @@ disp('Done!')
 disp('Calculating Broadband Reflectance...')
 % options = optimset('MaxFunEvals',1000,'Display','off');
 options = optimset('Display','off');
+
+for i = 1:size(rchop,2)
+    filteridxs{i} = DATAS.bbdarkcols(DATAS.bbdarkrows==i);
+end
 for i = 1:size(rchop,1)
-    for j = 1:5
-    blah = rchop(i,2:end-j+1)./rchop(i,1:end-j);
-%         rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
-%                 abs(Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind));
+    for j = 1:size(rchop,2)-3
+        srows = 1:size(rchop,2)-j+1;
+        blah = rchop(i,srows(2:end))./rchop(i,srows(1:end-1));
+        for k = srows
+%         fitfilter(k) = filteridxs{k}
+%         blah(filteridxs{i}
+        end
+     
+            rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
+                    abs(Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind));
 
-    p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
-        abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
+        p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
+            abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
 
-%         rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
-    p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(1:end-j+1),blah,[],[],options));
+            rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
+        p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(1:end-j+1),blah,[],[],options));
     end
 end
-%     OUTDATA.rfit = rfitteds;
+OUTDATA.rfit = rfitteds;
 OUTDATA.p1fit = p1fitteds;
-OUTDATA.wv = DATAS.wv(chopidxs);
+OUTDATA.wv = DATAS.wv;
 disp('Done!')
+
 
 % % This experimental _if_ statement is an attempt at self-calibrated broadband.
 % % Uniqueness of solutions has not been proven yet, so it may all be for
@@ -68,7 +81,7 @@ disp('Done!')
 % reff = 2.1037*OPTS.nind^6-19.8048*OPTS.nind^5+76.8786*OPTS.nind^4-...
 %     156.9634*OPTS.nind^3+176.4549*OPTS.nind^2 -101.6004*OPTS.nind+22.9286;
 % newrhos = OPTS.rhorange(1:end)'-1.3;
-% chopidxs = 425:1180;
+% wvidxs = 1:length(DATAS.wv);
 % options = optimset('MaxFunEvals',1e4,'MaxIter',1e4,'TolX',1e-9,'TolFun',1e-9,'Display','Iter');
 % loptions = optimset('MaxFunEvals',1000,'Display','off');
 % 
@@ -79,7 +92,7 @@ disp('Done!')
 %     for j = 1:4
 %         tic
 %         % Find solution for increasing numbers of points in a loop
-%         cchop = chopidxs(1:10^(3-i):end);
+%         cchop = wvidxs(1:10^(3-i):end);
 %         wchop = DATAS.wv(cchop)';
 %         rchop = DATAS.R(cchop,1:end-j)';
 %         rrat = rchop(2:end,:)./rchop(1:end-1,:);
