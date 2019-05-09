@@ -14,14 +14,14 @@ opt.geomadjust = 1;
 opt.bb = 1;
 opt.sphname = 'sphere-0002-tis.asc';
 opt.smooth = 1;
-opt.threshold = 3000; % Counts where uncalibrated spectrometer loses linearity
+opt.threshold = 4000; % Counts where uncalibrated spectrometer loses linearity
 
 % Load all possible rhos, to be adjusted in endmat (use long rhos if
 % possible)
-startrho = 16;
+startrho = 14;
 % With more dynamic range, broadband needs lower rhos for adequate counts
 bbstartrho = 12;
-endrho = 22;
+endrho = 27;
 opt.rhosteps = 1;
 opt.rhorange = startrho:opt.rhosteps:endrho;
 opt.bbrhorange = bbstartrho:opt.rhosteps:endrho;

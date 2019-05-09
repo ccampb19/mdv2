@@ -50,23 +50,37 @@ options = optimset('Display','off');
 for i = 1:size(rchop,2)
     filteridxs{i} = DATAS.bbdarkcols(DATAS.bbdarkrows==i);
 end
+rfitteds = zeros(size(rchop,1),size(rchop,2)-3);
+p1fitteds = rfitteds;
 for i = 1:size(rchop,1)
     for j = 1:size(rchop,2)-3
+
+
         srows = 1:size(rchop,2)-j+1;
-        blah = rchop(i,srows(2:end))./rchop(i,srows(1:end-1));
+        bdata = rchop(i,srows);
         for k = srows
-%         fitfilter(k) = filteridxs{k}
-%         blah(filteridxs{i}
+            if ~isempty(filteridxs{k})
+                if ismember(i,filteridxs{k})
+                    bdata(k) = nan;
+                end
+            end
         end
+        if sum(~isnan(bdata))<4
+            rfitteds(i,j) = nan;
+            p1fitteds(i,j) = nan;
+        else
+            blindex = find(~isnan(bdata));
+            blah = bdata(blindex(2:end))./bdata(blindex(1:end-1));
      
             rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
                     abs(Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind));
 
-        p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
-            abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
+            p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
+                abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
 
-            rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(1:end-j+1),blah,[],[],options));
-        p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(1:end-j+1),blah,[],[],options));
+            rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(blindex),blah,[],[],options));
+            p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(blindex),blah,[],[],options));
+        end
     end
 end
 OUTDATA.rfit = rfitteds;
