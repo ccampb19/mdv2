@@ -4,9 +4,8 @@ function OUTDATA = mdprocess_bb(OPTS,DATAS,OUTDATA)
 pwrlaw = @(b,x) b(1).*(x.^-b(2));
 muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
 % Adjust rho for fiber geometry (1mm shorter than FD)
-newrhos = OPTS.bbrhorange-1;
+newrhos = OPTS.bbrhorange-1.2;
 rchop = DATAS.R;
-muchop = muscat;
 wvchop = DATAS.wv;
 
 % Traditional broadband fit with scaling to FD MuA. I prefer to do
@@ -31,10 +30,10 @@ wvchop = DATAS.wv;
 %     for widx = 1:size(rscaled,1)
 % %                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
 % %             OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rchop(widx,ridx)./rscale(ridx) - ...
-% %                 abs(Rtheory(mu,muchop(widx),newrhos(ridx),OPTS.nind)),.01));
+% %                 abs(Rtheory(mu,muscat(widx),newrhos(ridx),OPTS.nind)),.01));
 % 
 %         OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-%             abs(p1seminfcompfit([mu,muchop(widx)],0,0,OPTS.nind,newrhos(ridx),0,0,1)),.01));
+%             abs(p1seminfcompfit([mu,muscat(widx)],0,0,OPTS.nind,newrhos(ridx),0,0,1)),.01));
 %     end
 % end
 % OUTDATA.rfit(DATAS.bbdarkidxs) = 0;
@@ -46,16 +45,24 @@ disp('Done!')
 disp('Calculating Broadband Reflectance...')
 % options = optimset('MaxFunEvals',1000,'Display','off');
 options = optimset('Display','off');
+psoptions = optimoptions('patternsearch','FunctionTolerance',1e-14,...
+    'MaxFunctionEvaluations',60000,'MaxIterations',60000,...
+    'MeshTolerance',2*eps,'Display','off');
+fmoptions = optimset('Display','off','MaxFunEvals',60000,'MaxIter',60000,'TolFun',1e-8,'TolX',1e-5);
 
+filteridxs = cell(1,size(rchop,2));
 for i = 1:size(rchop,2)
     filteridxs{i} = DATAS.bbdarkcols(DATAS.bbdarkrows==i);
 end
-rfitteds = zeros(size(rchop,1),size(rchop,2)-3);
+numwvs = size(rchop,1);
+rfitteds = zeros(numwvs,size(rchop,2)-3);
 p1fitteds = rfitteds;
-for i = 1:size(rchop,1)
+cwfitteds = zeros(numwvs,size(rchop,2)-3,2);
+for i = 1:numwvs
+    if ~mod(i,40)
+        fprintf('.');
+    end
     for j = 1:size(rchop,2)-3
-
-
         srows = 1:size(rchop,2)-j+1;
         bdata = rchop(i,srows);
         for k = srows
@@ -68,18 +75,25 @@ for i = 1:size(rchop,1)
         if sum(~isnan(bdata))<4
             rfitteds(i,j) = nan;
             p1fitteds(i,j) = nan;
+            cwfitteds(i,j,:) = nan;
         else
             blindex = find(~isnan(bdata));
             blah = bdata(blindex(2:end))./bdata(blindex(1:end-1));
      
-            rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
-                    abs(Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind));
+            rfunct = @(mua,xdata) abs(Rtheory(mua,muscat(i),xdata(2:end),OPTS.nind))./...
+                    abs(Rtheory(mua,muscat(i),xdata(1:end-1),OPTS.nind));
 
-            p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
-                abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
+            p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muscat(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
+                abs(p1seminfcompfit([mua,muscat(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
+            
+            cwfunct = @(p) cwprepfun(p(1),p(2),OPTS.nind,newrhos(blindex),bdata(blindex));        
 
             rfitteds(i,j) = abs(lsqcurvefit(rfunct,.01,newrhos(blindex),blah,[],[],options));
             p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(blindex),blah,[],[],options));
+
+            [cwfitteds(i,j,:),fval(i,j),exits(i,j)] = fminsearch(cwfunct,[p1fitteds(i,j),muscat(i)],fmoptions);
+%             [cwfitteds(i,j,:),fval(i,j),exits(i,j)] = patternsearch(cwfunct,[p1fitteds(i,j)-.002,muscat(i)+.1],...
+%                 [],[],[],[],[0,0],[.5,5],[],fmoptions);
         end
     end
 end
@@ -89,9 +103,9 @@ OUTDATA.wv = DATAS.wv;
 disp('Done!')
 
 
-% % This experimental _if_ statement is an attempt at self-calibrated broadband.
-% % Uniqueness of solutions has not been proven yet, so it may all be for
-% % naught.
+% This experimental _if_ statement is an attempt at self-calibrated broadband.
+% Uniqueness of solutions has not been proven yet, so it may all be for
+% naught.
 % reff = 2.1037*OPTS.nind^6-19.8048*OPTS.nind^5+76.8786*OPTS.nind^4-...
 %     156.9634*OPTS.nind^3+176.4549*OPTS.nind^2 -101.6004*OPTS.nind+22.9286;
 % newrhos = OPTS.rhorange(1:end)'-1.3;
@@ -134,21 +148,21 @@ disp('Done!')
 % for i = 1:6
 %     fdidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
 % end
-% %% is this the right way to do this?
-% for i = 1:size(rchop,1)
-%     perfecttheory = Rtheory(mean(OUTDATA.rmu(:,:,1)),mean(OUTDATA.rmu(:,:,2)),...
-%         newrhos(i),OPTS.nind)';
-%     rscale2(i) = perfecttheory\DATAS.R(fdidxs,i);
+%% is this the right way to do this?
+% for i = 1:length(newrhos)
+%     perfecttheory = Rtheory(mean(p1fitteds,2),muscat,...
+%         newrhos(i),OPTS.nind);
+%     rscale2(i) = perfecttheory\DATAS.R(:,i);
 % end
 % rrescale = DATAS.R(:,1:14).\rscale2;
 % for widx = 1:size(rrat,2)
 % %         blah = rrat(:,i);
 %     for ridx = 1:length(blah)
-%         sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
-%             abs(p1seminfcompfit([mua,muchop(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
+%         sfunct = @(mua) sum(sqrt((abs(p1seminfcompfit([mua,muscat(i)],0,0,OPTS.nind,newrhos(2:end-j+1),0,0,1))./...
+%             abs(p1seminfcompfit([mua,muscat(i)],0,0,nchop(i),newrhos(1:end-j),0,0,1))...
 %             -blah).^2));
 %                 bbmuas(widx,ridx) = abs(fzero(@(mu) rrescale(widx,ridx) - ...
-%         abs(Rtheory(mu,muchop(widx),newrhos(ridx),n)),.01));
+%         abs(Rtheory(mu,muscat(widx),newrhos(ridx),n)),.01));
 % %             fcurve = @(mua,xdata) mrhobb(x0(1),x0(2),rrat,newrhos,wchop2,OPTS.nind,reff,loptions,1);
 % %             fitteds(i) = lsqcurvefit(fcurve,.005,newrhos,blah);
 %     end

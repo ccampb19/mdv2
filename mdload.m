@@ -82,8 +82,8 @@ if OPTS.bb == 1
             refl(:,r_idx) = spectrumSmoother(refl(:,r_idx),3);
         end
     end
-%     DATAS.R = refl;
-    DATAS.R = refl./srefl;
+    DATAS.R = refl;
+%     DATAS.R = refl./srefl;
     DATAS.wv = temp.data(chopidxs,1);
     
     % Filter broadband data
