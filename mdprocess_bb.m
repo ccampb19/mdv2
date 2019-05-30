@@ -4,7 +4,7 @@ function OUTDATA = mdprocess_bb(OPTS,DATAS,OUTDATA)
 pwrlaw = @(b,x) b(1).*(x.^-b(2));
 muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
 % Adjust rho for fiber geometry (1mm shorter than FD)
-newrhos = OPTS.bbrhorange-1;
+newrhos = OPTS.bbrhorange-1.1;
 rchop = DATAS.R;
 muchop = muscat;
 wvchop = DATAS.wv;
@@ -12,32 +12,32 @@ wvchop = DATAS.wv;
 % Traditional broadband fit with scaling to FD MuA. I prefer to do
 % multirho broadband with FD MuS' only, to confirm results are
 % consistent.
-% disp('Calculating Broadband Reflectance...')
-% for didx = 1:length(OPTS.laser_names)
-% %         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
-%     OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
-% end
-% rref = interp1(wvchop,rchop,OPTS.laser_names);
-% for i = 1:length(OUTDATA.fdmua)
-%     rth(i,:) = (p1seminfcompfit([OUTDATA.fdmua(i),OUTDATA.opfd(2,i)],0,0,OPTS.nind,newrhos',0,0,1));
-% end
-% for ridx = 1:size(rth,2)
-%     rscale(ridx) = rth(:,ridx)\rref(:,ridx);
-% end
-% % Scale each spectrum to theory
-% rscaled = rchop./rscale;
-% OUTDATA.rfit = zeros(size(rscaled));
-% for ridx = 1:size(rscaled,2)
-%     for widx = 1:size(rscaled,1)
-% %                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-% %             OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rchop(widx,ridx)./rscale(ridx) - ...
-% %                 abs(Rtheory(mu,muchop(widx),newrhos(ridx),OPTS.nind)),.01));
-% 
-%         OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
-%             abs(p1seminfcompfit([mu,muchop(widx)],0,0,OPTS.nind,newrhos(ridx),0,0,1)),.01));
-%     end
-% end
-% OUTDATA.rfit(DATAS.bbdarkidxs) = 0;
+disp('Calculating Broadband Reflectance...')
+for didx = 1:length(OPTS.laser_names)
+%         fdwvidxs(i) = find(DATAS.wv>OPTS.laser_names(i),1,'first');
+    OUTDATA.fdmua(didx) = mean(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,1));
+end
+rref = interp1(wvchop,rchop,OPTS.laser_names);
+for i = 1:length(OUTDATA.fdmua)
+    rth(i,:) = (p1seminfcompfit([OUTDATA.fdmua(i),OUTDATA.opfd(2,i)],0,0,OPTS.nind,newrhos',0,0,1));
+end
+for ridx = 1:size(rth,2)
+    rscale(ridx) = rth(:,ridx)\rref(:,ridx);
+end
+% Scale each spectrum to theory
+rscaled = rchop./rscale;
+OUTDATA.rfit_sph = zeros(size(rscaled));
+for ridx = 1:size(rscaled,2)
+    for widx = 1:size(rscaled,1)
+%                         OUTDATA.bbmuas(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
+%             OUTDATA.rfit(widx,ridx) = abs(fzero(@(mu) rchop(widx,ridx)./rscale(ridx) - ...
+%                 abs(Rtheory(mu,muchop(widx),newrhos(ridx),OPTS.nind)),.01));
+
+        OUTDATA.rfit_sph(widx,ridx) = abs(fzero(@(mu) rscaled(widx,ridx) - ...
+            abs(p1seminfcompfit([mu,muchop(widx)],0,0,OPTS.nind,newrhos(ridx),0,0,1)),.01));
+    end
+end
+OUTDATA.rfit_sph(DATAS.bbdarkidxs) = 0;
 OUTDATA.wv = wvchop;
 disp('Done!')
 

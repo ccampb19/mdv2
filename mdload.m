@@ -61,35 +61,90 @@ if OPTS.bb == 1
     end
 
     chopidxs = 425:1605;
-    temp = importdata([OPTS.basedir OPTS.sphname],'\t',13);
-    sphint = str2num(temp.textdata{6}(24:end));
-    srefl = temp.data(chopidxs,2).*(1000/sphint); % counts/s
-    if OPTS.smooth == 1
+    
+    switch OPTS.sphreps
+        case -1
+        case 0
+            temp = importdata([OPTS.basedir OPTS.sphname '-tis.asc'],...
+                '\t',13);
+            sphamps = temp.data(chopidxs,2:end);
+            sphint = str2num(temp.textdata{6}(24:end));
+            srefl = mean(sphamps,2).*(1000/sphint); % counts/s
+        otherwise
+            for i = 1:OPTS.sphreps
+                temp = importdata([OPTS.basedir OPTS.sphname '-' sprintf('%04d',i)...
+                    '-tis.asc'],'\t',13);
+                sphint(i) = str2num(temp.textdata{6}(24:end));            
+                sphamps(:,:,i) = temp.data(chopidxs,2:end).*(1000/sphint(i));
+            end
+            srefl = mean(mean(sphamps,2),3);
+    end
+    % Time to make a function out of this sequence
+    if OPTS.sphreps == -1       
+    elseif OPTS.bbdark == 0
+        temp = importdata([OPTS.basedir OPTS.sphname '-tis-dark.asc'],...
+            '\t',13);
+        sphdint = str2num(temp.textdata{6}(24:end));      
+        sphdrefl = temp.data(chopidxs,2:end).*(1000/sphdint);
+        srefl = srefl-mean(sphdrefl,2);
+    else
+        for i = 1:OPTS.sphreps
+            temp = importdata([OPTS.basedir OPTS.sphname '-' sprintf('%04d',i)...
+                '-tis-dark.asc'],'\t',13);
+            sphdint(i) = str2num(temp.textdata{6}(24:end));            
+            sphdamps(:,:,i) = temp.data(chopidxs,2:end).*(1000/sphint(i));
+        end
+        srefl = srefl-mean(mean(sphdamps,2),3);
+    end
+    
+%     temp = importdata([OPTS.basedir OPTS.sphname],'\t',13);
+%     sphint = str2num(temp.textdata{6}(24:end));
+%     srefl = temp.data(chopidxs,2).*(1000/sphint); % counts/s
+    if (OPTS.smooth == 1 && OPTS.sphreps ~= -1)
         srefl = spectrumSmoother(srefl,1,3);
         srefl = spectrumSmoother(srefl,3);
     end
+    
+    % Load measurement reflectances
     for r_idx = 1:length(bbfilenames)
         temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis.asc'],'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
-
-%         refl(:,r_idx) = temp.data(:,2);
-        refl(:,r_idx) = temp.data(chopidxs,2).*(1000/inttime); % counts/s
-        
+        unc_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s        
+        if OPTS.bbdark == 1
+            temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis-dark.asc'],'\t',13);
+            drefl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s 
+        end
     end
+    if OPTS.bbdark == 1
+        refl = unc_refl-drefl;%.*(1000/inttime); % counts/s
+    else
+        refl = unc_refl;
+    end
+    
+    % Filter broadband data
+    % If spec data (dark-corrected or otherwise) below threshold, don't trust it
+    [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(unc_refl < OPTS.threshold);
+    DATAS.bbdarkidxs = find(unc_refl < OPTS.threshold);
+    
     if OPTS.smooth == 1
         for r_idx = 1:size(refl,2)
             refl(:,r_idx) = spectrumSmoother(refl(:,r_idx),1,3);
             refl(:,r_idx) = spectrumSmoother(refl(:,r_idx),3);
         end
     end
-%     DATAS.R = refl;
-    DATAS.R = refl./srefl;
+    DATAS.R = refl;
+    if OPTS.sphreps ~= -1
+        DATAS.R_sph = refl./srefl;
+    end
+    
+    %Wavelength Calibration
+%     specconsts = [419.190267100,0.4194587042,2.260460235e-5,-1.211947758e-8];
+%     pixels = (1:2067)';
+%     wvcorr = specconsts(1)+pixels.*(specconsts(2)+...
+%         specconsts(3).^2+specconsts(4).^3);
     DATAS.wv = temp.data(chopidxs,1);
     
-    % Filter broadband data
-    % If spec data (dark-corrected or otherwise) below 8000 cts, don't trust it
-    [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(refl < 8000);
-    DATAS.bbdarkidxs = find(refl < 8000);
+
 end
 
 %% Filter dark FD data?

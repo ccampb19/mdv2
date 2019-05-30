@@ -96,10 +96,10 @@ for didx = 1:length(OPTS.usediodes)
 %         hold on;plot(sfunct(squeeze(OUTDATA.rmu(endidx-5,didx,1)),squeeze(OUTDATA.rmu(endidx-5,didx,2))),'x')
     end
     OUTDATA.exp{didx} = YDATA;
-    if sum(OUTDATA.exits(:,didx) > 1) == 0
+    if sum(OUTDATA.exits(:,didx) ~= 2) == 0
         OUTDATA.opfd(:,didx) = median(squeeze(OUTDATA.rmu(:,didx,:)));
-    elseif sum(OUTDATA.exits(:,didx)> 1) == 1
-        OUTDATA.opfd(:,didx) = OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:);
+    elseif sum(OUTDATA.exits(:,didx) == 2) == 1
+        OUTDATA.opfd(:,didx) = OUTDATA.rmu(OUTDATA.exits(:,didx)==2,didx,:);
     else
         OUTDATA.opfd(:,didx) = median(squeeze(OUTDATA.rmu(OUTDATA.exits(:,didx)>0,didx,:)),1);
     end

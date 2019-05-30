@@ -2,26 +2,29 @@
 % clear
 % close all
 
-opt.basedir = 'D:\fdpm.data\troubleshooting\190301\';
-opt.nind = 1.4; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
-opt.laser_names=[660,688,781,806,828,849];  %only for plotting names
+opt.basedir = 'D:\fdpm.data\il_mdseries\190528\';
+opt.nind = 1.33; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
+opt.laser_names=[630,660,688,781,828,848];  %only for plotting names
 opt.usediodes = 1:6;
 
 % Adjust rho for LBS fiber positioning in ferrules?
+% 2/27/19 Rotated ferrule
 opt.geomadjust = 1;
 
 % Fit Broadband? One sphere file only (full filename)
 opt.bb = 1;
-opt.sphname = 'sphere-0002-tis.asc';
+opt.bbdark = 1;
+opt.sphname = 'sphere';
+opt.sphreps = -1;
 opt.smooth = 1;
 opt.threshold = 4000; % Counts where uncalibrated spectrometer loses linearity
 
 % Load all possible rhos, to be adjusted in endmat (use long rhos if
 % possible)
-startrho = 14;
+startrho = 12;
 % With more dynamic range, broadband needs lower rhos for adequate counts
-bbstartrho = 12;
-endrho = 27;
+bbstartrho = 11;
+endrho = 25;
 opt.rhosteps = 1;
 opt.rhorange = startrho:opt.rhosteps:endrho;
 opt.bbrhorange = bbstartrho:opt.rhosteps:endrho;
@@ -31,7 +34,7 @@ endfreq = 560;
 % Code will replace the rho in the prototype with opt.rhorange.
 % Ex: 'ex-12-1-baseline' will load 'ex-12-1-baseline-dcswitch.asc' thru 
 %     'ex-30-1-baseline-dcswitch.asc'
-base = 'ndabsd_twolamps';
+base = 'withbubbler';
 opt.filenameprototype = [num2str(startrho) '-1-' base ];
 
 % fdpm dark msmts
@@ -53,4 +56,4 @@ if opt.bb==1
     outdata = mdprocess_bb(opt,data,outdata);
 end
 toc
-[phantom,bbphantom] = mdplot(opt,outdata);
+[phantom,bbphantom,albphantom] = mdplot(opt,outdata);
