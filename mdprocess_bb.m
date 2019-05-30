@@ -50,13 +50,15 @@ options = optimset('Display','off');
 for i = 1:size(rchop,2)
     filteridxs{i} = DATAS.bbdarkcols(DATAS.bbdarkrows==i);
 end
-rfitteds = zeros(size(rchop,1),size(rchop,2)-3);
+% rfitteds = zeros(size(rchop,1),size(rchop,2)-3);
+rfitteds = zeros(size(rchop,1),DATAS.ncutoff-3);
 p1fitteds = rfitteds;
 for i = 1:size(rchop,1)
-    for j = 1:size(rchop,2)-3
+    for j = 1:DATAS.ncutoff-3
+%     for j = 1:size(rchop,2)-3
 
-
-        srows = 1:size(rchop,2)-j+1;
+%         srows = 1:size(rchop,2)-j+1;
+        srows = 1:DATAS.ncutoff-j+1;
         bdata = rchop(i,srows);
         for k = srows
             if ~isempty(filteridxs{k})

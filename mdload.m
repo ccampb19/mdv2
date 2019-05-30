@@ -79,7 +79,8 @@ if OPTS.bb == 1
             end
             srefl = mean(mean(sphamps,2),3);
     end
-    % Time to make a function out of this sequence
+    
+    % About time to make a function out of this sequence
     if OPTS.sphreps == -1       
     elseif OPTS.bbdark == 0
         temp = importdata([OPTS.basedir OPTS.sphname '-tis-dark.asc'],...
@@ -126,6 +127,15 @@ if OPTS.bb == 1
     [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(unc_refl < OPTS.threshold);
     DATAS.bbdarkidxs = find(unc_refl < OPTS.threshold);
     
+    % Also, cut off when reflectance data gets too noisy.
+    testdata = (refl-smoothdata(refl,'gaussian',21))./smoothdata(refl,'gaussian',21);
+    noisefig = abs(mean(testdata));
+    DATAS.ncutoff = find(noisefig == median(noisefig));
+    if isempty(DATAS.ncutoff)
+        DATAS.ncutoff = find(noisefig > median(noisefig),1,'first')-1;
+    end
+    
+    
     if OPTS.smooth == 1
         for r_idx = 1:size(refl,2)
             refl(:,r_idx) = spectrumSmoother(refl(:,r_idx),1,3);
@@ -142,8 +152,7 @@ if OPTS.bb == 1
 %     pixels = (1:2067)';
 %     wvcorr = specconsts(1)+pixels.*(specconsts(2)+...
 %         specconsts(3).^2+specconsts(4).^3);
-    DATAS.wv = temp.data(chopidxs,1);
-    
+    DATAS.wv = temp.data(chopidxs,1);    
 
 end
 

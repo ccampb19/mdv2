@@ -44,7 +44,7 @@ end
 xlim([600,1000])
 
 ylabel('\mu_A (mm^-^1)')
-title('Calculated OPs')
+title([OPTS.filenameprototype ' Calculated OPs'])
 
 subplot(2,1,2)
 hold on
@@ -63,7 +63,7 @@ if OPTS.bb == 1
     subplot(2,1,1)
     hold on
     
-    ha = plot(OUTPUT.wv,OUTPUT.rfit);
+    ha = plot(OUTPUT.wv,OUTPUT.rfit,'--');
     set(ha,{'Color'},num2cell(varycolor_rainbow(size(OUTPUT.rfit,2)),2));
 %     plot(OUTPUT.wv,OUTPUT.rfit_sph);
     hb = plot(OUTPUT.wv,OUTPUT.p1fit);
@@ -109,6 +109,9 @@ for i = 1:length(OUTPUT.p1fit)
     if sum(tvec) == 0
         means(i) = 0;
         ameans(i) = 0;
+    elseif length(tvec) < 3
+        means(i) = mean(tvec(tvec~=0));
+        ameans(i) = means(i);
     else
         means(i) = mean(tvec(tvec~=0));
         ameans(i) = mean(tvec(end-2:end));

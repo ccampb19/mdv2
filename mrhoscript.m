@@ -1,5 +1,5 @@
 % mrhoscript
-% clear
+clear
 % close all
 
 opt.basedir = 'D:\fdpm.data\il_mdseries\190528\';
@@ -34,7 +34,7 @@ endfreq = 560;
 % Code will replace the rho in the prototype with opt.rhorange.
 % Ex: 'ex-12-1-baseline' will load 'ex-12-1-baseline-dcswitch.asc' thru 
 %     'ex-30-1-baseline-dcswitch.asc'
-base = 'withbubbler';
+base = '0mg_nigros';
 opt.filenameprototype = [num2str(startrho) '-1-' base ];
 
 % fdpm dark msmts
