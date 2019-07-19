@@ -60,7 +60,7 @@ if OPTS.bb == 1
             num2str(OPTS.rhorange(1)),num2str(OPTS.bbrhorange(fnidx)));
     end
 
-    chopidxs = 425:1605;
+    chopidxs = 424:1605;
     
     switch OPTS.sphreps
         case -1
@@ -110,22 +110,59 @@ if OPTS.bb == 1
     for r_idx = 1:length(bbfilenames)
         temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis.asc'],'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
-        unc_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s        
+        filter_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2); % for filtering      
+        unc_refl(:,r_idx) = filter_refl(:,r_idx).*(1000/inttime); % counts/s
+        
+        if OPTS.overx == 1
+            temp = importdata([OPTS.basedir bbfilenames{r_idx} '-x-tis.asc'],'\t',13);
+            inttimex = str2num(temp.textdata{6}(24:end));
+            tempcts = mean(temp.data(chopidxs,2:end),2);
+            maxidxs(:,r_idx) = [find(tempcts==65535,1,'first'),find(tempcts==65535,1,'last')];
+            
+            % FIX INTTIME RECORDING IN LBS SOFTWARE
+            unc_reflx(:,r_idx) = tempcts.*(1000/(2*inttimex));
+            temp=importdata([OPTS.basedir bbfilenames{r_idx} '-x-tis-dark.asc'],'\t',13);
+            % FIX INTTIME RECORDING IN LBS SOFTWARE            
+            dreflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex)); % counts/s             
+        end
+        
         if OPTS.bbdark == 1
             temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis-dark.asc'],'\t',13);
             drefl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s 
         end
     end
-    if OPTS.bbdark == 1
-        refl = unc_refl-drefl;%.*(1000/inttime); % counts/s
+    if OPTS.overx == 1
+        % move ~15 nm (35 pixels) from region of CCD saturation
+        DATAS.oxidxs = [maxidxs(1,:)-35; maxidxs(2,:)+35];
+        
+        for zzyzx = 1:size(unc_refl,2)
+            unc_refl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = unc_reflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
+            unc_refl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = unc_reflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
+        end
+        if OPTS.bbdark == 1
+            drefl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = dreflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
+            drefl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = dreflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
+            refl = unc_refl-drefl;            
+        else
+            refl = unc_refl;
+        end
     else
-        refl = unc_refl;
+        if OPTS.bbdark == 1
+            refl = unc_refl-drefl;%.*(1000/inttime); % counts/s
+        else
+            refl = unc_refl;
+        end
     end
     
     % Filter broadband data
     % If spec data (dark-corrected or otherwise) below threshold, don't trust it
-    [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(unc_refl < OPTS.threshold);
-    DATAS.bbdarkidxs = find(unc_refl < OPTS.threshold);
+    if OPTS.overx == 1
+        [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(filter_refl < OPTS.threshold/2);
+        DATAS.bbdarkidxs = find(filter_refl < OPTS.threshold/2);
+    else
+        [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(filter_refl < OPTS.threshold);
+        DATAS.bbdarkidxs = find(filter_refl < OPTS.threshold);
+    end
     
     % Also, cut off when reflectance data gets too noisy.
     testdata = (refl-smoothdata(refl,'gaussian',21))./smoothdata(refl,'gaussian',21);
