@@ -12,23 +12,12 @@ if OPTS.basedir(end) ~= '/'
 end
 
 % Generate filenames
-filenames = cell(length(OPTS.rhorange),5);
+filenames = cell(length(OPTS.rhorange),1);
 for fnidx = 1:length(OPTS.rhorange)
     string_proto = strrep(OPTS.filenameprototype,...
         num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)));    
-    filenames{fnidx,1} = [OPTS.basedir string_proto '-dcswitch.asc'];
-    if OPTS.bb == 1
-        filenames{fnidx,2} = [OPTS.basedir string_proto '-tis.asc'];
-        if OPTS.bbdark == 1
-            filenames{fnidx,3} = [OPTS.basedir string_proto '-tis-dark.asc'];
-        end        
-        if OPTS.overx == 1
-            filenames{fnidx,4} = [OPTS.basedir string_proto '-x-tis.asc'];
-            if OPTS.bbdark == 1
-                filenames{fnidx,5} = [OPTS.basedir string_proto '-x-tis-dark.asc'];
-            end             
-        end
-    end
+    filenames{fnidx} = [OPTS.basedir string_proto '-dcswitch.asc'];
+
 end
 
 %% Error check
@@ -101,11 +90,22 @@ DATAS.cutoffidxs = cutoffs;
 
 %% Load Broadband data?
 if OPTS.bb == 1
-    bbfilenames = cell(length(OPTS.bbrhorange),1);
     for fnidx = 1:length(OPTS.bbrhorange)
-        bbfilenames{fnidx} = strrep(OPTS.filenameprototype,...
-            num2str(OPTS.rhorange(1)),num2str(OPTS.bbrhorange(fnidx)));
+        string_proto = strrep(OPTS.filenameprototype,...
+            num2str(OPTS.bbrhorange(1)),num2str(OPTS.bbrhorange(fnidx)));        
+        bbfilenames{fnidx,1} = [OPTS.basedir string_proto '-tis.asc'];
+        if OPTS.bbdark == 1
+            bbfilenames{fnidx,2} = [OPTS.basedir string_proto '-tis-dark.asc'];
+        end        
+        if OPTS.overx == 1
+            bbfilenames{fnidx,3} = [OPTS.basedir string_proto '-x-tis.asc'];
+            if OPTS.bbdark == 1
+                bbfilenames{fnidx,4} = [OPTS.basedir string_proto '-x-tis-dark.asc'];
+            end             
+        end
     end
+    
+
     
     switch OPTS.sphreps
         case -1
@@ -126,6 +126,7 @@ if OPTS.bb == 1
     end
     
     % About time to make a function out of this sequence
+    % Leaving sphere cal as an option to study water peak, for now
     if OPTS.sphreps == -1       
     elseif OPTS.bbdark == 0
         temp = importdata([OPTS.basedir OPTS.sphname '-tis-dark.asc'],...
@@ -143,36 +144,34 @@ if OPTS.bb == 1
         srefl = srefl-mean(mean(sphdamps,2),3);
     end
     
-%     temp = importdata([OPTS.basedir OPTS.sphname],'\t',13);
-%     sphint = str2num(temp.textdata{6}(24:end));
-%     srefl = temp.data(chopidxs,2).*(1000/sphint); % counts/s
+    % Smooth sphere data?
     if (OPTS.smooth == 1 && OPTS.sphreps ~= -1)
         srefl = spectrumSmoother(srefl,1,3);
         srefl = spectrumSmoother(srefl,3);
     end
     
     % Load measurement reflectances
-    for r_idx = 1:length(bbfilenames)
-        temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis.asc'],'\t',13);
+    for r_idx = 1:size(bbfilenames,1)
+        temp=importdata(bbfilenames{r_idx,1},'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
         filter_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2); % for filtering      
         unc_refl(:,r_idx) = filter_refl(:,r_idx).*(1000/inttime); % counts/s
         
         if OPTS.overx == 1
-            temp = importdata([OPTS.basedir bbfilenames{r_idx} '-x-tis.asc'],'\t',13);
+            temp = importdata(bbfilenames{r_idx,3},'\t',13);
             inttimex = str2num(temp.textdata{6}(24:end));
             tempcts = mean(temp.data(chopidxs,2:end),2);
             maxidxs(:,r_idx) = [find(tempcts==65535,1,'first'),find(tempcts==65535,1,'last')];
             
             % FIX INTTIME RECORDING IN LBS SOFTWARE
             unc_reflx(:,r_idx) = tempcts.*(1000/(2*inttimex));
-            temp=importdata([OPTS.basedir bbfilenames{r_idx} '-x-tis-dark.asc'],'\t',13);
+            temp=importdata(bbfilenames{r_idx,4},'\t',13);
             % FIX INTTIME RECORDING IN LBS SOFTWARE            
             dreflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex)); % counts/s             
         end
         
         if OPTS.bbdark == 1
-            temp=importdata([OPTS.basedir bbfilenames{r_idx} '-tis-dark.asc'],'\t',13);
+            temp=importdata(bbfilenames{r_idx,2},'\t',13);
             drefl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s 
         end
     end
@@ -201,6 +200,7 @@ if OPTS.bb == 1
     
     % Filter broadband data
     % If spec data (dark-corrected or otherwise) below threshold, don't trust it
+    % FIX INTTIME RECORDING IN LBS SOFTWARE            
     if OPTS.overx == 1
         [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(filter_refl < OPTS.threshold/2);
         DATAS.bbdarkidxs = find(filter_refl < OPTS.threshold/2);
@@ -216,7 +216,6 @@ if OPTS.bb == 1
     if isempty(DATAS.ncutoff)
         DATAS.ncutoff = find(noisefig > median(noisefig),1,'first')-1;
     end
-    
     
     if OPTS.smooth == 1
         for r_idx = 1:size(refl,2)
