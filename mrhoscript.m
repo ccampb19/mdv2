@@ -2,7 +2,7 @@
 clear
 % close all
 
-opt.basedir = 'D:\fdpm.data\spec_saturation\190718\';
+opt.basedir = '~/fdpm.data/spec_saturation/190718/';
 opt.nind = 1.33; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
 opt.laser_names=[630,660,688,781,828,848];  %only for plotting names
 opt.usediodes = 1:6;
