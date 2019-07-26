@@ -44,7 +44,7 @@ end
 xlim([600,1000])
 
 ylabel('\mu_A (mm^-^1)')
-title([OPTS.filenameprototype ' Calculated OPs'])
+title([OPTS.filenameprototype ' Calculated OPs'],'Interpreter','none')
 
 subplot(2,1,2)
 hold on
