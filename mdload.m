@@ -94,18 +94,16 @@ if OPTS.bb == 1
         string_proto = strrep(OPTS.filenameprototype,...
             num2str(OPTS.bbrhorange(1)),num2str(OPTS.bbrhorange(fnidx)));        
         bbfilenames{fnidx,1} = [OPTS.basedir string_proto '-tis.asc'];
-        if OPTS.bbdark == 1
+        if OPTS.subtractdark == 1
             bbfilenames{fnidx,2} = [OPTS.basedir string_proto '-tis-dark.asc'];
         end        
         if OPTS.overx == 1
             bbfilenames{fnidx,3} = [OPTS.basedir string_proto '-x-tis.asc'];
-            if OPTS.bbdark == 1
+            if OPTS.subtractdark == 1
                 bbfilenames{fnidx,4} = [OPTS.basedir string_proto '-x-tis-dark.asc'];
             end             
         end
     end
-    
-
     
     switch OPTS.sphreps
         case -1
@@ -128,7 +126,7 @@ if OPTS.bb == 1
     % About time to make a function out of this sequence
     % Leaving sphere cal as an option to study water peak, for now
     if OPTS.sphreps == -1       
-    elseif OPTS.bbdark == 0
+    elseif OPTS.subtractdark == 0
         temp = importdata([OPTS.basedir OPTS.sphname '-tis-dark.asc'],...
             '\t',13);
         sphdint = str2num(temp.textdata{6}(24:end));      
@@ -154,8 +152,12 @@ if OPTS.bb == 1
     for r_idx = 1:size(bbfilenames,1)
         temp=importdata(bbfilenames{r_idx,1},'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
-        filter_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2); % for filtering      
-        unc_refl(:,r_idx) = filter_refl(:,r_idx).*(1000/inttime); % counts/s
+        unc_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s
+        if OPTS.overx == 1
+            % Use double-exposure data to find filter indexes
+            temp = importdata(bbfilenames{r_idx,3},'\t',13);
+        end               
+        filter_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2); % for filtering   
         
         if OPTS.overx == 1
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
@@ -175,7 +177,7 @@ if OPTS.bb == 1
             dreflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex)); % counts/s             
         end
         
-        if OPTS.bbdark == 1
+        if OPTS.subtractdark == 1
             temp=importdata(bbfilenames{r_idx,2},'\t',13);
             drefl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s 
         end
@@ -187,16 +189,18 @@ if OPTS.bb == 1
         for zzyzx = 1:size(unc_refl,2)
             unc_refl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = unc_reflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
             unc_refl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = unc_reflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
+            if OPTS.subtractdark == 1
+                drefl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = dreflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
+                drefl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = dreflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
+            end
         end
-        if OPTS.bbdark == 1
-            drefl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = dreflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
-            drefl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = dreflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
-            refl = unc_refl-drefl;            
+        if OPTS.subtractdark == 1
+            refl = unc_refl-drefl;
         else
             refl = unc_refl;
         end
     else
-        if OPTS.bbdark == 1
+        if OPTS.subtractdark == 1
             refl = unc_refl-drefl;%.*(1000/inttime); % counts/s
         else
             refl = unc_refl;
@@ -206,13 +210,8 @@ if OPTS.bb == 1
     % Filter broadband data
     % If spec data (dark-corrected or otherwise) below threshold, don't trust it
     % FIX INTTIME RECORDING IN LBS SOFTWARE            
-    if OPTS.overx == 1
-        [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(filter_refl < OPTS.threshold/2);
-        DATAS.bbdarkidxs = find(filter_refl < OPTS.threshold/2);
-    else
-        [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(filter_refl < OPTS.threshold);
-        DATAS.bbdarkidxs = find(filter_refl < OPTS.threshold);
-    end
+    [DATAS.bbdarkcols,DATAS.bbdarkrows] = find(filter_refl < OPTS.threshold);
+    DATAS.bbdarkidxs = find(filter_refl < OPTS.threshold);
     
     % Also, cut off when reflectance data gets too noisy.
     testdata = (refl-smoothdata(refl,'gaussian',21))./smoothdata(refl,'gaussian',21);
