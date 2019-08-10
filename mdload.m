@@ -161,7 +161,12 @@ if OPTS.bb == 1
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
             inttimex = str2num(temp.textdata{6}(24:end));
             tempcts = mean(temp.data(chopidxs,2:end),2);
-            maxidxs(:,r_idx) = [find(tempcts==65535,1,'first'),find(tempcts==65535,1,'last')];
+            tidxs = [find(tempcts==65535,1,'first'),find(tempcts==65535,1,'last')];
+            if isempty(tidxs)
+                maxidxs(:,r_idx) = [36,length(tempcts)-35];
+            else
+                maxidxs(:,r_idx) = tidxs;
+            end
             
             % FIX INTTIME RECORDING IN LBS SOFTWARE
             unc_reflx(:,r_idx) = tempcts.*(1000/(2*inttimex));
@@ -212,10 +217,14 @@ if OPTS.bb == 1
     % Also, cut off when reflectance data gets too noisy.
     testdata = (refl-smoothdata(refl,'gaussian',21))./smoothdata(refl,'gaussian',21);
     noisefig = abs(mean(testdata));
-    DATAS.ncutoff = find(noisefig == median(noisefig));
-    if isempty(DATAS.ncutoff)
-        DATAS.ncutoff = find(noisefig > median(noisefig),1,'first')-1;
+    if mod(length(noisefig),2)
+        DATAS.ncutoff = find(noisefig == median(noisefig),1,'first');
+    else
+        DATAS.ncutoff = find(noisefig(2:end) == median(noisefig(2:end)),1,'first');
     end
+%     if DATAS.ncutoff == 0
+%         DATAS.ncutoff = length(noisefig);
+%     end
     
     if OPTS.smooth == 1
         for r_idx = 1:size(refl,2)

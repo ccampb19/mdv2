@@ -8,13 +8,22 @@ chromnames=temp.colheaders(2:end)';
 wvrange = phantom(:,1);
 A = interp1(chromwv,chromdata,wvrange);
 pidxs = ~isnan(phantom(:,2)) & ~isnan(A(:,1));
+muawv = phantom(pidxs,1);
+%Don't fit past 910nm
+testwv = find(muawv>910,1,'first');
+if isempty(testwv)
+    testwv = length(mua);
+end
+pidxs(testwv:end) = 0;
+
 mua = phantom(pidxs,2);
+muawv = phantom(pidxs,1);
 
 concs = lsqnonneg(A(pidxs,:),mua);
 fit = chromdata*concs;
 
 figure
-plot(wvrange(pidxs),mua,chromwv,fit)
+plot(muawv,mua,chromwv,fit)
 xlabel('\lambda (nm)')
 ylabel('\mu_A (mm^-^1)')
 legend('Recov. \mu_A','Fit')
