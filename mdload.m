@@ -7,8 +7,8 @@ pirat = pi/180;
 chopidxs = 424:1605;
 
 % Fix basedir if necessary
-if OPTS.basedir(end) ~= '/'
-    OPTS.basedir = [OPTS.basedir '/'];
+if OPTS.basedir(end) ~= '\'
+    OPTS.basedir = [OPTS.basedir '\'];
 end
 
 % Generate filenames
@@ -92,7 +92,7 @@ DATAS.cutoffidxs = cutoffs;
 if OPTS.bb == 1
     for fnidx = 1:length(OPTS.bbrhorange)
         string_proto = strrep(OPTS.filenameprototype,...
-            num2str(OPTS.bbrhorange(1)),num2str(OPTS.bbrhorange(fnidx)));        
+            num2str(OPTS.rhorange(1)),num2str(OPTS.bbrhorange(fnidx)));        
         bbfilenames{fnidx,1} = [OPTS.basedir string_proto '-tis.asc'];
         if OPTS.subtractdark == 1
             bbfilenames{fnidx,2} = [OPTS.basedir string_proto '-tis-dark.asc'];
@@ -104,6 +104,8 @@ if OPTS.bb == 1
             end             
         end
     end
+    % Error check
+    assert(~strcmp(bbfilenames{1,1},bbfilenames{2,1}),'Error: Filenames not populated correctly')
     
     switch OPTS.sphreps
         case -1
