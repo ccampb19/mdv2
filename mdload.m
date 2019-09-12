@@ -59,8 +59,8 @@ if isfield(OPTS,'darkname')
         end
     end
     
-    % Arbitrary point currently 3 dB above measured noise floor
-    dfloor = 10.^((3+20.*log10(max(darkamps,[],3)))/20)';
+    % Arbitrary point currently now 10 dB above measured noise floor
+    dfloor = 10.^((10+20.*log10(max(darkamps,[],3)))/20)';
     % This is getting ugly. Has to be a better way.
     cutoffs = size(DATAS.amps,2).*ones(size(DATAS.amps,1),size(DATAS.amps,3));
     for f_idx = 1:size(DATAS.amps,1)
