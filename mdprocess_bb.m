@@ -73,6 +73,7 @@ for i = 1:size(rchop,1)
         else
             blindex = find(~isnan(bdata));
             blah = bdata(blindex(2:end))./bdata(blindex(1:end-1));
+            debugRs{i,j} = blah;
      
             rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
                     abs(Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind));
@@ -85,6 +86,23 @@ for i = 1:size(rchop,1)
         end
     end
 end
+
+disp('Calculating Error')
+OUTDATA.rerr = zeros(size(rfitteds,1),1);
+OUTDATA.p1err = zeros(size(p1fitteds,1),1);
+for i = 1:size(rfitteds,1)
+    testd = rfitteds(i,:);
+    OUTDATA.rerr(i) = std(testd(~isnan(testd)));
+    testd = p1fitteds(i,:);
+    OUTDATA.p1err(i) = std(testd(~isnan(testd)));
+end
+for i = 1:length(OPTS.laser_names)
+    fbmismatchwvidxs(i) = min(find(wvchop<OPTS.laser_names(i),1,'last'),...
+        find(wvchop>OPTS.laser_names(i),1,'first'));
+end
+OUTDATA.fbmismatch_r = mean(rfitteds(fbmismatchwvidxs,:),2)-OUTDATA.fdmua';
+OUTDATA.fbmismatch_p1 = mean(p1fitteds(fbmismatchwvidxs,:),2)-OUTDATA.fdmua';
+
 OUTDATA.rfit = rfitteds;
 OUTDATA.p1fit = p1fitteds;
 OUTDATA.wv = DATAS.wv;

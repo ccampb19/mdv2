@@ -105,6 +105,7 @@ for didx = 1:length(OPTS.usediodes)
     end
     OUTDATA.theory{didx} = sfunct(OUTDATA.opfd(1,didx),OUTDATA.opfd(2,didx));
 end
+OUTDATA.fderr = squeeze(std(OUTDATA.rmu,[],1));
 OUTDATA.endfidxs = endfreqidxs;
 
 % Fit scattering parameters
