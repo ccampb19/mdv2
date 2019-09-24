@@ -14,7 +14,7 @@ A = interp1(chromwv,chromdata,wvrange);
 pidxs = ~isnan(phantom(:,2)) & ~isnan(A(:,1));
 muawv = phantom(pidxs,1);
 %Don't fit past 910nm
-testwv = find(muawv>925,1,'first');
+testwv = find(muawv>880,1,'first');
 if isempty(testwv)
     testwv = length(mua);
 end

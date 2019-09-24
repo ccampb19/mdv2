@@ -85,8 +85,8 @@ if isfield(OPTS,'darkname')
         DATAS.cutoff(d_idx,1) = OPTS.rhorange(roidx);
         DATAS.cutoff(d_idx,2) = foidx;
     end
+    DATAS.cutoffidxs = cutoffs;
 end
-DATAS.cutoffidxs = cutoffs;
 
 %% Load Broadband data?
 if OPTS.bb == 1
