@@ -1,9 +1,8 @@
 function OUTDATA = mdprocess_bb(OPTS,DATAS,OUTDATA)
 
-% pwrlaw = @(b,x) -b(1).*log(x)+b(2)+b(3).*x.^-4;
 pwrlaw = @(b,x) b(1).*(x.^-b(2));
 muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
-% Adjust rho for fiber geometry (1mm shorter than FD)
+% Adjust rho for fiber geometry (side-by-side 1mm fibers)
 newrhos = OPTS.bbrhorange-1.1;
 rchop = DATAS.R;
 muchop = muscat;
