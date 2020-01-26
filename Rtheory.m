@@ -30,8 +30,12 @@ function R = Rtheory(mua, musp, rho, n, boundary_opt, Reff)
 
 mutp=mua+musp;				% reduced att. coefficient
 
-D=1./(3*(mutp));			% diffusion constant
+alfa = 1-0.8.*(musp+mua)/(musp.*1.6+mua);
+D=1./(3.*(musp+alfa.*mua));			% diffusion constant, low albedo
+% D=1./(3.*(musp+mua));       % diffusion constant
+% D=1./(3*musp);      % Least accurate, probably?
 mueff=(mua./D).^0.5;		% effective att.
+% zo=1./musp;
 zo=1./(mutp);				% distance surface-isotropic source
 zb=2*D*(1+Reff)/(1-Reff); %distance  surface-extrapolated boundary
 r1=(zo.^2+rho.^2).^0.5;  %
@@ -43,3 +47,4 @@ flux=((4*pi).^-1).*(zo.*(mueff+r1.^-1).*(exp(-mueff.*r1)./r1.^2) +((zo+2*zb).*(m
 fr1=0.7857 * (n.^3) - 4.3259 * (n.^2) + 8.26405 * n - 4.71306;
 fr2=-0.02043 * (n.^3)- 0.38418 * (n.^2) + 2.01132 * n - 1.62198;
 R=(1-fr1)/4*fluence-(fr2-1)/2*flux;  % see Kienle and Patterson, JOSA A 14(1), 246-254,1997
+% R = fluence;

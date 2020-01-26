@@ -101,7 +101,9 @@ end
 c = 2.99792458e11/nind;				% now in mm/s
 mutr = mua+mus;
 ltr = 1/mutr;
-D=1/3*ltr;			%diffusion coefficient, uses the mua for kicks
+alfa = 1-0.8.*(mus+mua)/(mus.*1.6+mua);
+D=1./(3.*(mus+alfa.*mua));			% diffusion constant, low albedo
+% D=1/3*ltr;			%diffusion coefficient, uses the mua for kicks
 I=sqrt(-1);
 fbc = 1.0e6*2*pi*f./c;			% now in MHZ for omega
 alpha=3*fbc*D;		%Josh definition, such that alpha is 2pi*Tcoll/Tmod (page 109).

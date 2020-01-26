@@ -8,7 +8,7 @@ chopidxs = 424:1605;
 
 % Fix basedir if necessary
 if OPTS.basedir(end) ~= '\'
-    OPTS.basedir = [OPTS.basedir '\'];
+    OPTS.basedir = [OPTS.basedir '/'];
 end
 
 % Generate filenames
@@ -155,28 +155,52 @@ if OPTS.bb == 1
         temp=importdata(bbfilenames{r_idx,1},'\t',13);
         inttime = str2num(temp.textdata{6}(24:end));
         unc_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s
+        DATAS.wv = temp.data(chopidxs,1);    
+
         if OPTS.overx == 1
             % Use double-exposure data to find filter indexes
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
+            for g = 1:size(temp.data,2)-1
+                tidx(g,:) = [find(temp.data(:,g+1)==65535,1,'first'),find(temp.data(:,g+1)==65535,1,'last')];
+            end
+            
         end               
         filter_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2); % for filtering   
         
         if OPTS.overx == 1
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
             inttimex = str2num(temp.textdata{6}(24:end));
-            tempcts = mean(temp.data(chopidxs,2:end),2);
-            tidxs = [find(tempcts==65535,1,'first'),find(tempcts==65535,1,'last')];
-            if isempty(tidxs)
-                maxidxs(:,r_idx) = [36,length(tempcts)-35];
+
+            % move ~15 nm (35 pixels) from region of CCD saturation
+            tempcts = temp.data(chopidxs,2:end);          
+            [~,a] = find(tempcts'==65535,1,'first');
+            [~,b] = find(tempcts'==65535,1,'last');
+            tidxs = [a,b];
+             
+            if OPTS.binning > 0
+                if ~isempty(a)
+                    DATAS.oxidxs(:,r_idx) = ...
+                        [floor((a-35)/OPTS.binning);ceil((b+35)/OPTS.binning)];
+                else                
+                    DATAS.oxidxs(:,r_idx) = ...
+                        [floor(36/OPTS.binning);ceil((size(tempcts,2)-35)/OPTS.binning)];
+                end                
             else
-                maxidxs(:,r_idx) = tidxs;
+                % No binning
+                if ~isempty(a)
+                    DATAS.oxidxs(:,r_idx) = [a;b];
+                else
+                    DATAS.oxidxs(:,r_idx) = [a-35; b+35];
+                end                   
             end
-            
+
             % FIX INTTIME RECORDING IN LBS SOFTWARE
-            unc_reflx(:,r_idx) = tempcts.*(1000/(2*inttimex));
-            temp=importdata(bbfilenames{r_idx,4},'\t',13);
-            % FIX INTTIME RECORDING IN LBS SOFTWARE            
-            dreflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex)); % counts/s             
+            unc_reflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex));
+            if OPTS.subtractdark == 1
+                temp=importdata(bbfilenames{r_idx,4},'\t',13);
+                % FIX INTTIME RECORDING IN LBS SOFTWARE            
+                dreflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex)); % counts/s  
+            end
         end
         
         if OPTS.subtractdark == 1
@@ -184,10 +208,42 @@ if OPTS.bb == 1
             drefl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s 
         end
     end
-    if OPTS.overx == 1
-        % move ~15 nm (35 pixels) from region of CCD saturation
-        DATAS.oxidxs = [maxidxs(1,:)-35; maxidxs(2,:)+35];
-        
+    if OPTS.binning > 0
+        b = OPTS.binning;
+        nbins = floor(size(unc_refl,1)/b);
+        t = zeros(nbins,size(unc_refl,2));
+        for i = 1:nbins
+            t(i,:) = mean(unc_refl((b*i-b+1):(b*i),:));
+            w(i) = mean(DATAS.wv((b*i-b+1):(b*i)));
+        end
+        unc_refl = t;
+        DATAS.wv = w;
+        if exist('unc_reflx','var')
+            for i = 1:nbins
+                t(i,:) = mean(unc_reflx((b*i-b+1):(b*i),:));
+            end 
+            unc_reflx = t;
+        end
+        if exist('drefl','var')
+            for i = 1:nbins
+                t(i,:) = mean(drefl((b*i-b+1):(b*i),:));
+            end 
+            drefl = t;
+        end
+        if exist('dreflx','var')
+            for i = 1:nbins
+                t(i,:) = mean(dreflx((b*i-b+1):(b*i),:));
+            end 
+            dreflx = t;
+        end 
+        if exist('filter_refl','var')
+            for i = 1:nbins
+                t(i,:) = mean(filter_refl((b*i-b+1):(b*i),:));
+            end
+            filter_refl = t;
+        end                    
+    end
+    if OPTS.overx == 1               
         for zzyzx = 1:size(unc_refl,2)
             unc_refl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = unc_reflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
             unc_refl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = unc_reflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
@@ -238,6 +294,4 @@ if OPTS.bb == 1
         DATAS.R_sph = refl./srefl;
     end
     
-    DATAS.wv = temp.data(chopidxs,1);    
-
 end
