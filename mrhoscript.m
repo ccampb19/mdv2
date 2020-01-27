@@ -2,7 +2,7 @@
 clear
 % close all
 
-opt.basedir = '~/fdpm.data/hemozoin/190923';
+opt.basedir = 'D:\fdpm.data\hz_dryrun\200124';
 opt.nind = 1.33; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
 opt.laser_names=[631 660 689 782 828 849];  %only for plotting names
 opt.usediodes = 1:6;
@@ -23,28 +23,31 @@ opt.binning = 6;
 
 % Load all possible rhos, to be adjusted in endmat (use long rhos if
 % possible)
-startrho = 14;
+startrho = 11;
 % With more dynamic range, broadband needs lower rhos for adequate counts
 % rhocal = linspace(11,29,20);
-bbstartrho = 14;
-endrho = 28;
+bbstartrho = startrho;
+endrho = 18;
 opt.rhosteps = 1;
-opt.rhorange = startrho:opt.rhosteps:endrho;
-opt.bbrhorange = bbstartrho:opt.rhosteps:endrho;
-endfreq = 560;
+% opt.rhorange = startrho:opt.rhosteps:endrho;
+% opt.bbrhorange = bbstartrho:opt.rhosteps:endrho;
+opt.rhorange = [11,12,17,18];
+opt.bbrhorange = opt.rhorange;
+endfreq = 250;
 
 % Enter the first filename to be loaded, less the '-dcswitch.asc'
 % Code will replace the rho in the prototype with opt.rhorange.
 % Ex: 'ex-12-1-baseline' will load 'ex-12-1-baseline-dcswitch.asc' thru 
 %     'ex-30-1-baseline-dcswitch.asc'
 % base = 'blood2_DO34_reset';
-base = 'blood2_DO34_reset';
-opt.filenameprototype = [num2str(startrho) '-' base ];
+base = 'baseline';
+opt.filenameprototype = [num2str(startrho) '-1-' base ];
 % opt.filenameprototype = [base '-' num2str(startrho)];
 
 % fdpm dark msmts
-opt.darkname = 'dark2';
-opt.darkreps = 5;
+% comment out if none available
+% opt.darkname = 'dark2';
+% opt.darkreps = 5;
 
 % Startrhos must be at least min(rhorange),
 % and probably don't need to change much.

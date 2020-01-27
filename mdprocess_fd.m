@@ -36,7 +36,7 @@ end
 %     'MaxFunctionEvaluations',60000,'MaxIterations',60000);
 psoptions = optimoptions('patternsearch','FunctionTolerance',1e-14,...
     'MaxFunctionEvaluations',60000,'MaxIterations',60000,...
-    'MeshTolerance',2*eps);
+    'MeshTolerance',2*eps,'StepTolerance',1e-14,'ConstraintTolerance',1e-14);
 
 disp('Exit Flags:')
 

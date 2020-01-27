@@ -279,9 +279,9 @@ if OPTS.bb == 1
     else
         DATAS.ncutoff = find(noisefig(2:end) == median(noisefig(2:end)),1,'first');
     end
-%     if DATAS.ncutoff == 0
-%         DATAS.ncutoff = length(noisefig);
-%     end
+    if DATAS.ncutoff == 0 || length(OPTS.bbrhorange) < 10
+        DATAS.ncutoff = length(noisefig);
+    end
     
     if OPTS.smooth == 1
         for r_idx = 1:size(refl,2)

@@ -5,7 +5,7 @@ function [phantom, bbp, bap] = mdplot(OPTS,OUTPUT)
 %   EXITS contains exitflags indicating degree of fitting success
 
 diodenum = length(OPTS.usediodes);
-colors = varycolor_rainbow(length(OPTS.rhorange));
+colors = varycolor_rainbow(diodenum);
 numlines = min(10,length(OPTS.rhorange));
 
 figure
@@ -105,23 +105,29 @@ muas(isnan(muas)) = median(OUTPUT.rmu(:,isnan(muas),1));
 muss(isnan(muss)) = median(OUTPUT.rmu(:,isnan(muss),2));
 phantom = [OPTS.laser_names;muas;muss]';
 
-for i = 1:length(OUTPUT.rfit)
-    tvec = OUTPUT.rfit(i,:);
-% for i = 1:length(OUTPUT.p1fit)
-%     tvec = OUTPUT.p1fit(i,:);
-    if sum(tvec) == 0
-        means(i) = 0;
-        ameans(i) = 0;
-    elseif length(tvec) < 3
-        means(i) = mean(tvec(tvec~=0));
-        ameans(i) = means(i);
-    else
-        means(i) = mean(tvec(tvec~=0));
-        ameans(i) = mean(tvec(end-2:end));
+if OPTS.bb == 1
+    for i = 1:length(OUTPUT.rfit)
+        tvec = OUTPUT.rfit(i,:);
+    % for i = 1:length(OUTPUT.p1fit)
+    %     tvec = OUTPUT.p1fit(i,:);
+        if sum(tvec) == 0
+            means(i) = 0;
+            ameans(i) = 0;
+        elseif length(tvec) < 3
+            means(i) = mean(tvec(tvec~=0));
+            ameans(i) = means(i);
+        else
+            means(i) = mean(tvec(tvec~=0));
+            ameans(i) = mean(tvec(end-2:end));
+        end
     end
+    bbp = [OUTPUT.wv;means;OUTPUT.pwrfit(1).*OUTPUT.wv.^-OUTPUT.pwrfit(2)]';
+    bap = [OUTPUT.wv;ameans;OUTPUT.pwrfit(1).*OUTPUT.wv.^-OUTPUT.pwrfit(2)]';
+else
+    bbp = 0;
+    bap = 0;
 end
-bbp = [OUTPUT.wv;means;OUTPUT.pwrfit(1).*OUTPUT.wv.^-OUTPUT.pwrfit(2)]';
-bap = [OUTPUT.wv;ameans;OUTPUT.pwrfit(1).*OUTPUT.wv.^-OUTPUT.pwrfit(2)]';
+end
 
 % for i = 1:6
 %     muas = OUTPUT.rmu(:,i,1);

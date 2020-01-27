@@ -61,72 +61,84 @@ end
 % rfitteds = zeros(size(rchop,1),size(rchop,2)-3);
 rfitteds = zeros(size(rchop,1),DATAS.ncutoff-3);
 p1fitteds = rfitteds;
-for i = 1:size(rchop,1)
-    for j = 1:DATAS.ncutoff-3
-%     for j = 1:size(rchop,2)-3
 
-%         srows = 1:size(rchop,2)-j+1;
-        srows = 1:DATAS.ncutoff-j+1;
-        bdata = rchop(i,srows);
-        for k = srows
-            if ~isempty(filteridxs{k})
-                if ismember(i,filteridxs{k})
-                    bdata(k) = nan;
-                end
-            end
-        end
-        if sum(~isnan(bdata))<4
-            rfitteds(i,j) = nan;
-            p1fitteds(i,j) = nan;
-        else
-            blindex = find(~isnan(bdata));
-            blah = bdata(blindex(2:end))./bdata(blindex(1:end-1));
+    % Determine SDS pairs (uses unadjusted rhorange,outputs adjusted)
+    % (For noise filtering, fixed later)
+%     bswitch = 1;
+%     srows = 1:DATAS.ncutoff;
+%     nbrhos = newrhos(srows);
+
+OUTDATA.bbpairs = mdrhopairs(newrhos(1:DATAS.ncutoff));
+trhorange = newrhos(OUTDATA.bbpairs);
+for i = 1:size(rchop,1)
+    
+    blindex = 1:DATAS.ncutoff;
+    
+    % Come back to reimplement noise filtering later.
+    
+%     srows = 1:DATAS.ncutoff;
+%     bdata = rchop(i,srows);
+%     for k = srows
+%         if ~isempty(filteridxs{k})
+%             if ismember(i,filteridxs{k})
+%                 bdata(k) = nan;
+%             end
+%         end
+%     end
+%     if sum(~isnan(bdata))<4
+%         rfitteds(i,j) = nan;
+%         p1fitteds(i,j) = nan;
+%     else
+%         blindex = find(~isnan(bdata));
+%         blah = bdata(blindex(2:end))./bdata(blindex(1:end-1));
 %             debugRs{i,j} = blah;
-     
+
 %             rfunct = @(mua,xdata) abs(Rtheory(mua,muchop(i),xdata(2:end),OPTS.nind))./...
 %                     abs(Rtheory(mua,muchop(i),xdata(1:end-1),OPTS.nind));
 
-            zfun = @(mua,mus,xdata) ...
-                Rtheory(mua,muchop(i),xdata,OPTS.nind);                
-            rvec = mdprepbb(rchop(i,blindex));
-            zfunct = @(p,x) norm(mdprepbb(zfun(p,muchop(i),newrhos(blindex)))-rvec);                
-            
+        zfun = @(mua,mus,xdata1,xdata2) ...
+            Rtheory(mua,muchop(i),xdata1,OPTS.nind)./...
+            Rtheory(mua,muchop(i),xdata2,OPTS.nind);                
+        rvec = rchop(i,OUTDATA.bbpairs(:,1))./rchop(i,OUTDATA.bbpairs(:,2));
+        zfunct = @(p,x) norm(zfun(p,muchop(i),trhorange(:,1),trhorange(:,2))-rvec);                
+
 %             rfunct = @(p,xdata) p(2).*(Rtheory(p(1),muchop(i),xdata,OPTS.nind));
 %             zfunct = @(pp) rfunct(pp,newrhos(blindex))-bdata(blindex);
 %             temp = lsqnonlin(zfunct,[.01,5e8],[0,-inf],[10,inf],lsqoptions);
 %             rfitteds(i,j) = temp(1);
 %             OUTDATA.ayys(i,j) = temp(2);
+        pfun = @(mua,xdata) ...
+            p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(:,1),0,0,1)./...
+            p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(:,2),0,0,1);
+%         p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
+%             abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
 
-            p1funct = @(mua,xdata) abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(2:end),0,0,1))./...
-                abs(p1seminfcompfit([mua,muchop(i)],0,0,OPTS.nind,xdata(1:end-1),0,0,1));
-
-            [rfitteds(i,j),resnorms(i,j),~,exits(i,j)] = fminsearch(zfunct,.01);
+        [rfitteds(i),resnorms(i),~,exits(i)] = fminsearch(zfunct,.01);
 %             rfitteds(i,j) = abs(rfitteds(i,j));
-        
-            p1fitteds(i,j) = abs(lsqcurvefit(p1funct,.01,newrhos(blindex),blah,[],[],options));
-            
-            %%%% DEBUG %%%%%%
-            if j==1 && ~mod(i,10)
+
+        p1fitteds(i) = abs(lsqcurvefit(pfun,.01,trhorange,rvec',[],[],options));
+
+        %%%% DEBUG %%%%%%
+        if ~mod(i,10)
 %             if j==1 && (i==210 || i==877)
-                figure(102)
-                plot(rvec,'ko')
-                hold on
-                plot(mdprepbb(zfun(rfitteds(i,j),muchop(i),newrhos(blindex))));
-                xlim([0, length(rvec)]);
-                title(num2str(wvchop(i)))
-                drawnow
-                pause(.3)
-                hold off
-                
+            figure(102)
+            plot(rvec,'ko')
+            hold on
+            plot(zfun(rfitteds(i),muchop(i),trhorange(:,1),trhorange(:,2)));
+            xlim([0, length(rvec)]);
+            title(num2str(wvchop(i)))
+            drawnow
+            pause(.3)
+            hold off
+
 %                 figure(103)
 %                 plot(abs(Rtheory(rfitteds(i,j),muchop(i),newrhos(blindex(2:end)),OPTS.nind)),'.');
 %                 hold on
 %                 plot(abs(Rtheory(rfitteds(i,j),muchop(i),newrhos(blindex(1:end-1)),OPTS.nind)),'.');
 %                 title(num2str(wvchop(i)))
-                                                
-            end
-            %%%% /DEBUG %%%%%
-        end
+
+%         end
+        %%%% /DEBUG %%%%%
     end
 end
 
