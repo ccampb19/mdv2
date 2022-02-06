@@ -1,7 +1,7 @@
 function [OUTDATA] = mdprocess_fd(OPTS,ENDMAT,DATAS)
 %MDLOAD loads files for multirho fits
 %   OPTS contains all necessary data to load a mutlidistance dataset.
-%   ENDMAT contains other information (fix descriptions)
+%   ENDMAT contains other information (self: fix descriptions)
 %   DATAS contains that dataset.
 %
 %   PROCESSED is processed data

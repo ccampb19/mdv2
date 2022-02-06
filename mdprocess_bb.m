@@ -4,13 +4,13 @@ pwrlaw = @(b,x) b(1).*(x.^-b(2));
 muscat = pwrlaw(OUTDATA.pwrfit,DATAS.wv);
 % Adjust rho for fiber geometry (side-by-side 1mm fibers)
 % rhocal = linspace(11,29,20);
-newrhos = OPTS.bbrhorange-1.1;
+newrhos = OPTS.bbrhorange+OPTS.bboffset;
 rchop = DATAS.R;
 muchop = muscat;
 wvchop = DATAS.wv;
 
-% Traditional broadband fit with scaling to FD MuA. I prefer to do
-% multirho broadband with FD MuS' only, to confirm results are
+% OUTDATA.rfit_sph uses BLI-style broadband fit with scaling to FD MuA. 
+% I prefer to do multirho broadband with FD MuS' only, to confirm results are
 % consistent.
 disp('Calculating Broadband Reflectance...')
 for didx = 1:length(OPTS.laser_names)
@@ -59,7 +59,7 @@ for i = 1:size(rchop,2)
     filteridxs{i} = DATAS.bbdarkcols(DATAS.bbdarkrows==i);
 end
 % rfitteds = zeros(size(rchop,1),size(rchop,2)-3);
-rfitteds = zeros(size(rchop,1),DATAS.ncutoff-3);
+rfitteds = zeros(size(rchop,1),1);
 p1fitteds = rfitteds;
 
     % Determine SDS pairs (uses unadjusted rhorange,outputs adjusted)
@@ -118,29 +118,49 @@ for i = 1:size(rchop,1)
 
         p1fitteds(i) = abs(lsqcurvefit(pfun,.01,trhorange,rvec',[],[],options));
 
+        OUTDATA.paper_rfits(i,:) = pfun(p1fitteds(i),trhorange);
+        OUTDATA.paper_exps(i,:) = rvec;
         %%%% DEBUG %%%%%%
-        if ~mod(i,10)
-%             if j==1 && (i==210 || i==877)
-            figure(102)
-            plot(rvec,'ko')
-            hold on
-            plot(zfun(rfitteds(i),muchop(i),trhorange(:,1),trhorange(:,2)));
-            xlim([0, length(rvec)]);
-            title(num2str(wvchop(i)))
-            drawnow
-            pause(.3)
-            hold off
-
-%                 figure(103)
-%                 plot(abs(Rtheory(rfitteds(i,j),muchop(i),newrhos(blindex(2:end)),OPTS.nind)),'.');
-%                 hold on
-%                 plot(abs(Rtheory(rfitteds(i,j),muchop(i),newrhos(blindex(1:end-1)),OPTS.nind)),'.');
-%                 title(num2str(wvchop(i)))
-
-%         end
-        %%%% /DEBUG %%%%%
-    end
+%         if ~mod(i,10)
+% %             if j==1 && (i==210 || i==877)
+%             figure(102)
+%             plot(rvec,'ko')
+%             hold on
+%             plot(zfun(rfitteds(i),muchop(i),trhorange(:,1),trhorange(:,2)));
+%             xlim([0, length(rvec)]);
+%             title(num2str(wvchop(i)))
+%             drawnow
+%             pause(.3)
+%             hold off
+% 
+% %                 figure(103)
+% %                 plot(abs(Rtheory(rfitteds(i,j),muchop(i),newrhos(blindex(2:end)),OPTS.nind)),'.');
+% %                 hold on
+% %                 plot(abs(Rtheory(rfitteds(i,j),muchop(i),newrhos(blindex(1:end-1)),OPTS.nind)),'.');
+% %                 title(num2str(wvchop(i)))
+% 
+% %         end
+%         %%%% /DEBUG %%%%%
 end
+
+%%%%%DEBUG%%%%%
+% Plot reflectance ratios and fits
+% for x = 1:1182
+%     pfun = @(mua,xdata) p1seminfcompfit([mua,muchop(x)],0,0,OPTS.nind,xdata(:,1),0,0,1)./...
+%     p1seminfcompfit([mua,muchop(x)],0,0,OPTS.nind,xdata(:,2),0,0,1);
+%     rcalc(x,:) = pfun(p1fitteds(x),trhorange);
+% end
+% blahh = rchop(:,OUTDATA.bbpairs(:,1))./rchop(:,OUTDATA.bbpairs(:,2));
+% 
+% colors = hsv(4)
+% figure;ha = plot(OUTDATA.wv,rcalc);
+% set(ha,{'Color'},num2cell(colors,2))
+% hold on;plot(OUTDATA.wv,blahh,'k--')
+% legend('16/10  mm','17/10 mm','16/11 mm','17/11 mm','Fits','Location','South')
+% xlim([600 1000])
+% xlabel('Wavelength (nm)')
+% ylabel('R_a/R_b')
+%%%%%/DEBUG%%%%%
 
 disp('Calculating Error')
 OUTDATA.resnorms = resnorms;
@@ -165,7 +185,7 @@ OUTDATA.wv = DATAS.wv;
 disp('Done!')
 
 
-% % This experimental _if_ statement is an attempt at self-calibrated broadband.
+% % This experimental section is an attempt at self-calibrated broadband.
 % % Uniqueness of solutions has not been proven yet, so it may all be for
 % naught.
 % % % % % reff = 2.1037*OPTS.nind^6-19.8048*OPTS.nind^5+76.8786*OPTS.nind^4-...

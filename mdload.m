@@ -7,24 +7,25 @@ pirat = pi/180;
 chopidxs = 424:1605;
 
 % Fix basedir if necessary
-if OPTS.basedir(end) ~= '\'
-    OPTS.basedir = [OPTS.basedir '/'];
+if ~any(strcmp(OPTS.basedir(end),{'\','/'}))
+    OPTS.basedir(end+1) = filesep;
 end
 
 % Generate filenames
 filenames = cell(length(OPTS.rhorange),1);
 for fnidx = 1:length(OPTS.rhorange)
     string_proto = strrep(OPTS.filenameprototype,...
-        num2str(OPTS.rhorange(1)),num2str(OPTS.rhorange(fnidx)));    
-    filenames{fnidx} = [OPTS.basedir string_proto '-dcswitch.asc'];
+        [num2str(OPTS.rhorange(1)),'-'],[num2str(OPTS.rhorange(fnidx)),'-']);    
+    filenames{fnidx} = [OPTS.basedir string_proto '-' OPTS.systemname '.asc'];
 
 end
 
 %% Error check
 for fnidx = 1:size(filenames,1)
-    findvar = length(strfind(filenames{fnidx,1},[num2str(OPTS.rhorange(fnidx)) '-']));
+    testidx = regexp(filenames{fnidx,1},'[^/\\]+$');
+    findvar = length(strfind(filenames{fnidx,1}(testidx:end),[num2str(OPTS.rhorange(fnidx)) '-']));
     if findvar == 0
-        findvar = length(strfind(filenames{fnidx,1},num2str(OPTS.rhorange(fnidx))));
+        findvar = length(strfind(filenames{fnidx,1}(testidx:end),num2str(OPTS.rhorange(fnidx))));
         if findvar == 0
             error('Could not replace rho in file prototype');
         elseif findvar ~=1
@@ -48,13 +49,13 @@ DATAS.freqs = temp.data(:,1);
 %% Filter dark FD data (different from broadband dark data filenames above)?
 if isfield(OPTS,'darkname')
     if OPTS.darkreps == 0
-        temp = importdata([OPTS.basedir OPTS.darkname '-dcswitch.asc'],...
+        temp = importdata([OPTS.basedir OPTS.darkname '-' OPTS.systemname '.asc'],...
             '\t',16);
         darkamps = temp.data(:,3:2:end);
     else
         for i = 1:OPTS.darkreps
             temp = importdata([OPTS.basedir OPTS.darkname '-' sprintf('%04d',i)...
-                '-dcswitch.asc'],'\t',16);
+                '-' OPTS.systemname '.asc'],'\t',16);
             darkamps(:,:,i) = temp.data(:,3:2:end);
         end
     end
@@ -75,6 +76,7 @@ if isfield(OPTS,'darkname')
     end
     % To simplify things, use the cutoff frequency where a normalized
     % line first passes through the cutoff function for a given diode
+    % SDS-specific cutoffs could be developed with more complicated code
     normline = (1:f_idx)'.*(size(DATAS.amps,2)./f_idx);
     for d_idx = 1:size(DATAS.amps,3)
         roidx = find((cutoffs(:,d_idx)-normline)<0,1,'first')-1;
@@ -92,7 +94,7 @@ end
 if OPTS.bb == 1
     for fnidx = 1:length(OPTS.bbrhorange)
         string_proto = strrep(OPTS.filenameprototype,...
-            num2str(OPTS.rhorange(1)),num2str(OPTS.bbrhorange(fnidx)));        
+            [num2str(OPTS.rhorange(1)),'-'],[num2str(OPTS.bbrhorange(fnidx)),'-']);        
         bbfilenames{fnidx,1} = [OPTS.basedir string_proto '-tis.asc'];
         if OPTS.subtractdark == 1
             bbfilenames{fnidx,2} = [OPTS.basedir string_proto '-tis-dark.asc'];
@@ -161,7 +163,8 @@ if OPTS.bb == 1
             % Use double-exposure data to find filter indexes
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
             for g = 1:size(temp.data,2)-1
-                tidx(g,:) = [find(temp.data(:,g+1)==65535,1,'first'),find(temp.data(:,g+1)==65535,1,'last')];
+%                 tidx(g,:) = [find(temp.data(:,g+1)==65535,1,'first'),find(temp.data(:,g+1)==65535,1,'last')];
+                tidx(g,:) = [find(temp.data(:,g+1)>63000,1,'first'),find(temp.data(:,g+1)>63000,1,'last')];
             end
             
         end               

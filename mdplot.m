@@ -5,33 +5,33 @@ function [phantom, bbp, bap] = mdplot(OPTS,OUTPUT)
 %   EXITS contains exitflags indicating degree of fitting success
 
 diodenum = length(OPTS.usediodes);
-colors = varycolor_rainbow(diodenum);
 numlines = min(10,length(OPTS.rhorange));
+colors = varycolor_rainbow(numlines);
 
-figure
-for i = 1:diodenum
-    tempe = reshape(OUTPUT.exp{i},OUTPUT.endfidxs(i),[]);
-    tempt = reshape(OUTPUT.theory{i},OUTPUT.endfidxs(i),[]);
-    
-    subplot(diodenum,2,2*i-1)
-    hold on
-    ha = plot(abs(tempe(1:numlines,:))','.');
-    hb = plot(abs(tempt(1:numlines,:))');
-    set(hb,{'Color'},num2cell(colors(1:numlines,:),2));
-    ylabel('Amp.')
-    title(num2str(OPTS.laser_names(OPTS.usediodes(i))))
-    
-    subplot(diodenum,2,2*i)
-    hold on
-    ha = plot(angle(tempe(1:numlines,:)'),'.','Color',colors(i,:));
-    set(ha,{'Color'},num2cell(colors(1:numlines,:),2));
-    hb = plot(angle(tempt(1:numlines,:)'),'Color',colors(i,:));
-    set(hb,{'Color'},num2cell(colors(1:numlines,:),2));
-    ylabel('Phase')
-    title(num2str(OPTS.laser_names(i)))
-    
-end
-suptitle('Phase/Amp Ratios & Fits')
+% figure
+% for i = 1:diodenum
+%     tempe = reshape(OUTPUT.exp{i},OUTPUT.endfidxs(i),[]);
+%     tempt = reshape(OUTPUT.theory{i},OUTPUT.endfidxs(i),[]);
+%     
+%     subplot(diodenum,2,2*i-1)
+%     hold on
+%     ha = plot(abs(tempe(1:numlines,:))','.');
+%     hb = plot(abs(tempt(1:numlines,:))');
+%     set(hb,{'Color'},num2cell(colors(1:numlines,:),2));
+%     ylabel('Amp.')
+%     title(num2str(OPTS.laser_names(OPTS.usediodes(i))))
+%     
+%     subplot(diodenum,2,2*i)
+%     hold on
+%     ha = plot(angle(tempe(1:numlines,:)'),'.','Color',colors(i,:));
+%     set(ha,{'Color'},num2cell(colors(1:numlines,:),2));
+%     hb = plot(angle(tempt(1:numlines,:)'),'Color',colors(i,:));
+%     set(hb,{'Color'},num2cell(colors(1:numlines,:),2));
+%     ylabel('Phase')
+%     title(num2str(OPTS.laser_names(i)))
+%     
+% end
+% sgtitle('Phase/Amp Ratios & Fits')
 
 fignum = 1000+randi(1000);
 figure(fignum)
@@ -82,10 +82,10 @@ figure
 for i = 1:length(OPTS.usediodes)
     tempexpmat = reshape(OUTPUT.exp{i},OUTPUT.endfidxs(i),[]);
     tempthymat = reshape(OUTPUT.theory{i},size(tempexpmat));
-    subplot(2,floor(length(OPTS.usediodes)/2),i)
+    subplot(2,ceil(length(OPTS.usediodes)/2),i)
     title([num2str(OPTS.laser_names(OPTS.usediodes((i)))) ' nm'])
     hold on
-    for j = 1:min(length(OPTS.rhorange),size(tempexpmat,2))
+    for j = 1:min([length(OPTS.rhorange),size(tempexpmat,2),10])
 %     for j = 1:size(tempexpmat,2)
         if ~isempty(tempexpmat)
             plot(tempexpmat(:,j),'.','Color',colors(j,:))
@@ -95,7 +95,7 @@ for i = 1:length(OPTS.usediodes)
     xlabel('Re')
     ylabel('Im')
 end
-suptitle('FD Complex Fits')
+sgtitle('FD Complex Fits')
 
 for i = 1:length(OPTS.usediodes)
     muas(i) = mean(OUTPUT.rmu(OUTPUT.exits(:,i)>0,i,1));
@@ -106,8 +106,8 @@ muss(isnan(muss)) = median(OUTPUT.rmu(:,isnan(muss),2));
 phantom = [OPTS.laser_names;muas;muss]';
 
 if OPTS.bb == 1
-    for i = 1:length(OUTPUT.rfit)
-        tvec = OUTPUT.rfit(i,:);
+    for i = 1:length(OUTPUT.p1fit)
+        tvec = OUTPUT.p1fit(i,:);
     % for i = 1:length(OUTPUT.p1fit)
     %     tvec = OUTPUT.p1fit(i,:);
         if sum(tvec) == 0
@@ -121,8 +121,8 @@ if OPTS.bb == 1
             ameans(i) = mean(tvec(end-2:end));
         end
     end
-    bbp = [OUTPUT.wv;means;OUTPUT.pwrfit(1).*OUTPUT.wv.^-OUTPUT.pwrfit(2)]';
-    bap = [OUTPUT.wv;ameans;OUTPUT.pwrfit(1).*OUTPUT.wv.^-OUTPUT.pwrfit(2)]';
+    bbp = [OUTPUT.wv(:),means(:),OUTPUT.pwrfit(1).*OUTPUT.wv(:).^-OUTPUT.pwrfit(2)];
+    bap = [OUTPUT.wv(:),ameans(:),OUTPUT.pwrfit(1).*OUTPUT.wv(:).^-OUTPUT.pwrfit(2)];
 else
     bbp = 0;
     bap = 0;
