@@ -2,7 +2,7 @@
 clear
 % close all
 
-opt.basedir = 'D:\fdpm.data\training_shashi_nic\220204';
+opt.basedir = 'D:\fdpm.data\training_sn\220204';
 opt.systemname = 'dcswitch'; % 'miniLBS', or 'dcswitch', for data file names
 opt.nind = 1.4; %1.33 for water, 1.36 for 20% intralipid, 1.4 for PDMS  
 opt.laser_names=[660 689 782 808 828 849];  %only for plotting names
@@ -14,10 +14,10 @@ opt.geomadjust = 1;
 
 % Fit Broadband? One sphere file only (full filename)
 opt.bb = 1;
-opt.subtractdark = 1;
-opt.overx = 0; % If an overexposed tis file was created, stitch them together (optionally)
+opt.subtractbbdark = 1; % Dark measurements should be required, but go nuts.
+opt.overx = 1; % If an overexposed tis file was created, stitch them together (optionally)
 opt.sphname = 'rc04-1';
-opt.sphreps = -1; % -1 to skip sphere cal.
+opt.sphreps = -1; % Sphere cal not recommended. -1 to skip.
 opt.smooth = 0; % Smooth broadband reflectance?
 opt.threshold = 7500; % Counts where uncalibrated spectrometer apparently loses linearity
 opt.binning = 4;    % ~2 pixels per nm, but 9nm resolution with this spec. Binning helps smooth data
@@ -44,13 +44,13 @@ endfreq = 420;
 % Code will replace the rho in the prototype with opt.rhorange.
 % Ex: 'ex-12-1-baseline' will load 'ex-12-1-baseline-dcswitch.asc' thru 
 %     'ex-30-1-baseline-dcswitch.asc'
-base = 'testytest';
-opt.filenameprototype = [num2str(startrho) '-' base];
+base = 'ph017';
+opt.filenameprototype = [num2str(startrho), '-', base];
 
 % fdpm dark msmts
 % comment out if none available
-% opt.darkname = 'darkfinal';
-% opt.darkreps = 5;
+opt.darkname = 'dark';
+opt.darkreps = 5;
 
 % Startrhos must be at least min(rhorange),
 % and probably don't need to change much.
@@ -69,7 +69,7 @@ end
 toc
 [phantom,bbphantom,albphantom] = mdplot(opt,outdata);
 
-%% Implement chromophore fit
+%% Chromophore fit
 % Our only lipid chromophore is from rendered pig fat, I think, which
 % doesn't match the phospholipids in Intralipid, so I don't use that one.
 % uchrom = [1 1 1 0 1 1];

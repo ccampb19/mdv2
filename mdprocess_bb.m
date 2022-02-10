@@ -43,7 +43,7 @@ disp('Done!')
 
 
 % Multirho broadband with FD MuS' only
-disp('Calculating Broadband Reflectance...')
+% disp('Calculating Broadband Reflectance...')
 options = optimset('MaxFunEvals',10000,'Display','off');
 % psoptions = optimoptions('patternsearch','FunctionTolerance',1e-14,...
 %     'MaxFunctionEvaluations',1800000,'MaxIterations',60000,...

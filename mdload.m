@@ -6,6 +6,9 @@ function DATAS = mdload(OPTS)
 pirat = pi/180;
 chopidxs = 424:1605;
 
+% Handle some overX edge cases
+stitchbit = 0;
+
 % Fix basedir if necessary
 if ~any(strcmp(OPTS.basedir(end),{'\','/'}))
     OPTS.basedir(end+1) = filesep;
@@ -14,25 +17,34 @@ end
 % Generate filenames
 filenames = cell(length(OPTS.rhorange),1);
 for fnidx = 1:length(OPTS.rhorange)
-    string_proto = strrep(OPTS.filenameprototype,...
-        [num2str(OPTS.rhorange(1)),'-'],[num2str(OPTS.rhorange(fnidx)),'-']);    
-    filenames{fnidx} = [OPTS.basedir string_proto '-' OPTS.systemname '.asc'];
-
+    % Pad prototype to address case of rho at beginning/end of prototype
+    string_proto = strrep(['-' OPTS.filenameprototype '-'],...
+        ['-',num2str(OPTS.rhorange(1)),'-'],...
+        ['-',num2str(OPTS.rhorange(fnidx)),'-']);
+    % Then remove the padding
+    filenames{fnidx} = [OPTS.basedir string_proto(2:end-1) '-' OPTS.systemname '.asc'];
 end
 
 %% Error check
+% There are many potential errors from this file naming scheme. Address the
+% most common.
 for fnidx = 1:size(filenames,1)
+    % Get file name. (not sure why I did this--fileparts() would work just as well)
     testidx = regexp(filenames{fnidx,1},'[^/\\]+$');
-    findvar = length(strfind(filenames{fnidx,1}(testidx:end),[num2str(OPTS.rhorange(fnidx)) '-']));
+    % Compare rhos from filenames with rhorange
+    findvar = numel(strfind(filenames{fnidx,1}(testidx:end),[num2str(OPTS.rhorange(fnidx)) '-']));
     if findvar == 0
-        findvar = length(strfind(filenames{fnidx,1}(testidx:end),num2str(OPTS.rhorange(fnidx))));
+        % Try without the hyphen, though there should be a delimiter present
+        findvar = numel(strfind(filenames{fnidx,1}(testidx:end),num2str(OPTS.rhorange(fnidx))));
         if findvar == 0
             error('Could not replace rho in file prototype');
         elseif findvar ~=1
-            error('Rho can only appear once in filenames');
+            % Multiple solutions ('a-14-blah','blah-14','14-blah'). Suggest one.
+            error('File names should begin with rho (mm), e.g: "14-ndabsc-..."');
         end
-    elseif findvar ~=1
-        error('Rho can only appear once in filenames');
+        % Not sure what the error was that led me to restrict rhos to
+        % 1 occurrence in the filename. I'm sure it will throw errors again 
+        % at some point, unless the root cause has been fixed.
     end
 end
 
@@ -92,16 +104,20 @@ end
 
 %% Load Broadband data?
 if OPTS.bb == 1
+    disp('Loading broadband data...')
     for fnidx = 1:length(OPTS.bbrhorange)
-        string_proto = strrep(OPTS.filenameprototype,...
-            [num2str(OPTS.rhorange(1)),'-'],[num2str(OPTS.bbrhorange(fnidx)),'-']);        
+        % See FD filename replacements for explanatory comments
+        string_proto = strrep(['-',OPTS.filenameprototype,'-'],...
+            ['-',num2str(OPTS.rhorange(1)),'-'],...
+            ['-',num2str(OPTS.bbrhorange(fnidx)),'-']);
+        string_proto = string_proto(2:end-1);
         bbfilenames{fnidx,1} = [OPTS.basedir string_proto '-tis.asc'];
-        if OPTS.subtractdark == 1
+        if OPTS.subtractbbdark == 1
             bbfilenames{fnidx,2} = [OPTS.basedir string_proto '-tis-dark.asc'];
         end        
         if OPTS.overx == 1
             bbfilenames{fnidx,3} = [OPTS.basedir string_proto '-x-tis.asc'];
-            if OPTS.subtractdark == 1
+            if OPTS.subtractbbdark == 1
                 bbfilenames{fnidx,4} = [OPTS.basedir string_proto '-x-tis-dark.asc'];
             end             
         end
@@ -130,7 +146,7 @@ if OPTS.bb == 1
     % About time to make a function out of this sequence
     % Leaving sphere cal as an option to study water peak, for now
     if OPTS.sphreps == -1       
-    elseif OPTS.subtractdark == 0
+    elseif OPTS.subtractbbdark == 0
         temp = importdata([OPTS.basedir OPTS.sphname '-tis-dark.asc'],...
             '\t',13);
         sphdint = str2num(temp.textdata{6}(24:end));      
@@ -159,23 +175,46 @@ if OPTS.bb == 1
         unc_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s
         DATAS.wv = temp.data(chopidxs,1);    
 
-        if OPTS.overx == 1
+        if OPTS.overx == 1 && ~stitchbit
             % Use double-exposure data to find filter indexes
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
             for g = 1:size(temp.data,2)-1
-%                 tidx(g,:) = [find(temp.data(:,g+1)==65535,1,'first'),find(temp.data(:,g+1)==65535,1,'last')];
-                tidx(g,:) = [find(temp.data(:,g+1)>63000,1,'first'),find(temp.data(:,g+1)>63000,1,'last')];
+
+                try
+                    tidx(g,:) = [find(temp.data(:,g+1)==65535,1,'first'),find(temp.data(:,g+1)==65535,1,'last')];
+                catch                   
+                    % Either we hit the integration time limit, so use the
+                    % single exposure...
+                    if r_idx > 1
+                        warning(['Overexposures ignored for SDS >', num2str(OPTS.bbrhorange(r_idx)-1) ' mm'])
+                        stitchbit = r_idx;
+                        break
+                    else
+                        % or spec is configured for online dark correction,
+                        % which could interfere with the overX stitching.
+                        warning('%s\n%s','Dynamic dark correction used. Skipping overX correction.',...
+                            '(Disable option in spectrometer EEPROM to fix.)')
+                        stitchbit = -1;
+                        break
+                    end
+                    
+                end
             end
             
-        end               
+        end   
+
+        % Here, temp data will be overX data if applicable. Otherwise, single
+        % exposure. Find counts below threshold.
         filter_refl(:,r_idx) = mean(temp.data(chopidxs,2:end),2); % for filtering   
         
-        if OPTS.overx == 1
+        if OPTS.overx == 1 && ~stitchbit
+            
             temp = importdata(bbfilenames{r_idx,3},'\t',13);
             inttimex = str2num(temp.textdata{6}(24:end));
 
             % move ~15 nm (35 pixels) from region of CCD saturation
-            tempcts = temp.data(chopidxs,2:end);          
+            tempcts = temp.data(chopidxs,2:end);     
+            % 65535
             [~,a] = find(tempcts'==65535,1,'first');
             [~,b] = find(tempcts'==65535,1,'last');
             tidxs = [a,b];
@@ -199,14 +238,14 @@ if OPTS.bb == 1
 
             % FIX INTTIME RECORDING IN LBS SOFTWARE
             unc_reflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex));
-            if OPTS.subtractdark == 1
+            if OPTS.subtractbbdark == 1
                 temp=importdata(bbfilenames{r_idx,4},'\t',13);
                 % FIX INTTIME RECORDING IN LBS SOFTWARE            
                 dreflx(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/(2*inttimex)); % counts/s  
             end
         end
         
-        if OPTS.subtractdark == 1
+        if OPTS.subtractbbdark == 1
             temp=importdata(bbfilenames{r_idx,2},'\t',13);
             drefl(:,r_idx) = mean(temp.data(chopidxs,2:end),2).*(1000/inttime); % counts/s 
         end
@@ -214,18 +253,21 @@ if OPTS.bb == 1
     if OPTS.binning > 0
         b = OPTS.binning;
         nbins = floor(size(unc_refl,1)/b);
-        t = zeros(nbins,size(unc_refl,2));
+        t = zeros(nbins,size(unc_refl,2));            
+
         for i = 1:nbins
             t(i,:) = mean(unc_refl((b*i-b+1):(b*i),:));
             w(i) = mean(DATAS.wv((b*i-b+1):(b*i)));
         end
         unc_refl = t;
         DATAS.wv = w;
+
         if exist('unc_reflx','var')
+            tx = zeros(nbins,size(unc_reflx,2));
             for i = 1:nbins
-                t(i,:) = mean(unc_reflx((b*i-b+1):(b*i),:));
+                tx(i,:) = mean(unc_reflx((b*i-b+1):(b*i),:));
             end 
-            unc_reflx = t;
+            unc_reflx = tx;
         end
         if exist('drefl','var')
             for i = 1:nbins
@@ -235,9 +277,9 @@ if OPTS.bb == 1
         end
         if exist('dreflx','var')
             for i = 1:nbins
-                t(i,:) = mean(dreflx((b*i-b+1):(b*i),:));
+                tx(i,:) = mean(dreflx((b*i-b+1):(b*i),:));
             end 
-            dreflx = t;
+            dreflx = tx;
         end 
         if exist('filter_refl','var')
             for i = 1:nbins
@@ -246,22 +288,22 @@ if OPTS.bb == 1
             filter_refl = t;
         end                    
     end
-    if OPTS.overx == 1               
-        for zzyzx = 1:size(unc_refl,2)
+    if OPTS.overx == 1 && stitchbit ~=-1       
+        for zzyzx = 1:size(unc_reflx,2)
             unc_refl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = unc_reflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
             unc_refl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = unc_reflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
-            if OPTS.subtractdark == 1
+            if OPTS.subtractbbdark == 1
                 drefl(1:DATAS.oxidxs(1,zzyzx),zzyzx) = dreflx(1:DATAS.oxidxs(1,zzyzx),zzyzx);
                 drefl(DATAS.oxidxs(2,zzyzx):end,zzyzx) = dreflx(DATAS.oxidxs(2,zzyzx):end,zzyzx);
             end
         end
-        if OPTS.subtractdark == 1
+        if OPTS.subtractbbdark == 1
             refl = unc_refl-drefl;
         else
             refl = unc_refl;
         end
     else
-        if OPTS.subtractdark == 1
+        if OPTS.subtractbbdark == 1
             refl = unc_refl-drefl;%.*(1000/inttime); % counts/s
         else
             refl = unc_refl;
